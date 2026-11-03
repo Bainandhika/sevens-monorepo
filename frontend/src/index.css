@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global CSS classes: .nb-border, .nb-border-3, .neo-box-shadow, .neo-box-shadow-sm, .neo-box-shadow-lg, .neo-box-shadow-card, .timer-alert, .animate-idle, .animate-slot-landed, .badge-pop, .pt-safe, .pb-safe */
+
+@layer base {
+  :root {
+    color-scheme: light;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    overscroll-behavior: none;
+  }
+
+  body {
+    background-color: #F5F0EA;
+    color: #131B2E;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+    user-select: none;
+    -webkit-user-select: none;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background-color: #FFE600;
+    color: #000000;
+  }
+
+  #root {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    width: 100%;
+  }
+
+  /* Tactile Neo-Brutalist button press */
+  button:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0px #000000;
+  }
+}
+
+@layer utilities {
+  /* Safe Area Insets for Mobile PWA */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pl-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+
+  .pr-safe {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  /* Neo-Brutalist Border Utilities */
+  .nb-border {
+    border: 2.5px solid #000000;
+  }
+
+  .nb-border-3 {
+    border: 3px solid #000000;
+  }
+
+  /* Neo-Brutalist Hard-Edge Box Shadow Utilities */
+  .neo-box-shadow {
+    box-shadow: 3.5px 3.5px 0px #000000;
+  }
+
+  .neo-box-shadow-sm {
+    box-shadow: 2px 2px 0px #000000;
+  }
+
+  .neo-box-shadow-lg {
+    box-shadow: 5px 5px 0px #000000;
+  }
+
+  .neo-box-shadow-card {
+    box-shadow: 2.5px 2.5px 0px #000000;
+  }
+
+  /* User Select None Helper */
+  .user-select-none {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+/* Micro-Animation Keyframes from Google Stitch & DESIGN.md */
+
+@keyframes timer-urgency {
+  0%, 100% {
+    transform: scale(1);
+    background-color: #FF4343;
+  }
+  50% {
+    transform: scale(1.06);
+    background-color: #FF1A1A;
+  }
+}
+
+@keyframes idle-breathe {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes slot-land {
+  0% {
+    transform: scale(1.15) translateY(-6px);
+    opacity: 0.85;
+  }
+  60% {
+    transform: scale(0.96) translateY(2px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes score-pop {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Micro-Animation Utility Classes */
+.timer-alert {
+  animation: timer-urgency 0.8s ease-in-out infinite;
+}
+
+.animate-idle {
+  animation: idle-breathe 2.4s ease-in-out infinite;
+}
+
+.animate-slot-landed {
+  animation: slot-land 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.badge-pop {
+  animation: score-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
