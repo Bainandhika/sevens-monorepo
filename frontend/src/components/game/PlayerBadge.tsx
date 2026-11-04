@@ -1,13 +1,11 @@
 import React from 'react';
 import clsx from 'clsx';
 import { Player } from '../../types/game';
-import { TurnTimerBadge } from './TurnTimerBadge';
 
 export interface PlayerBadgeProps {
   player: Player;
   isCurrentTurn: boolean;
   isMe?: boolean;
-  timeLeft?: number;
   align?: 'left' | 'right';
   className?: string;
 }
@@ -39,13 +37,11 @@ function getPlayerInitials(player: Player): string {
  *   4. Badge giliran aktif (pinging dot kuning)
  *   5. Badge rekor kumulatif 'Kalah: Nx' (px-1.5 py-0.5 rounded-lg border-2 border-black font-black text-[10px];
  *      bg-[#FF4343] text-white jika lossesCount > 0, bg-[#F5F0EA] text-black jika 0x)
- *   6. TurnTimerBadge: ditampilkan jika isCurrentTurn dan timeLeft terdefinisi
  */
 export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
   player,
   isCurrentTurn,
   isMe = false,
-  timeLeft,
   align = 'left',
   className,
 }) => {
@@ -86,14 +82,14 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
         />
       </div>
 
-      {/* Info Pemain: Nama, Status Giliran, Timer, dan Rekor Kalah */}
+      {/* Info Pemain: Nama, Status Giliran, dan Rekor Kalah */}
       <div
         className={clsx(
           'flex flex-col justify-center min-w-0',
           isRightAligned ? 'items-end' : 'items-start'
         )}
       >
-        {/* Baris 1: Nama Pemain + Pinging Dot Giliran + TurnTimerBadge */}
+        {/* Baris 1: Nama Pemain + Pinging Dot Giliran */}
         <div
           className={clsx(
             'flex items-center gap-1.5 max-w-full',
@@ -122,11 +118,6 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFE600] opacity-80" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FFE600] border border-black" />
             </span>
-          )}
-
-          {/* TurnTimerBadge: ditampilkan jika isCurrentTurn dan timeLeft terdefinisi */}
-          {isCurrentTurn && timeLeft !== undefined && (
-            <TurnTimerBadge timeLeft={timeLeft} isActive={isCurrentTurn} />
           )}
         </div>
 
