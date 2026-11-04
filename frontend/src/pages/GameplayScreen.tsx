@@ -5,7 +5,6 @@ import {
   getInitials,
   getAceStatusLabel,
 } from '../store/useGameStore';
-import { useTurnTimer } from '../hooks/useTurnTimer';
 import { useWasmEngine } from '../hooks/useWasmEngine';
 import { AppShell } from '../components/layout/AppShell';
 import { PlayerBadge } from '../components/game/PlayerBadge';
@@ -50,7 +49,7 @@ const DEFAULT_BOARD_STATE: BoardState = {
  * (3) Area Meja (Table Surface):
  *     - Top Row: Opponent 2 (left) and Opponent 3 (right).
  *     - Middle: CentralBoard (4 suit columns x 3 representative cards).
- *     - Bottom Row: User badge Anda (left, with badges 'ANDA', 'GILIRAN', 'Kalah: Nx', and TurnTimerBadge '10s')
+ *     - Bottom Row: User badge Anda (left, with badges 'ANDA', 'GILIRAN', and 'Kalah: Nx')
  *       alongside Opponent 4 (right).
  *
  * (4) Footer:
@@ -89,9 +88,6 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
 
   // Initialize and run the TinyGo WebAssembly AI engine (with pure TS fallback & 700ms natural bot thinking delay)
   useWasmEngine();
-
-  // Turn countdown timer: 10s per turn, urgency alert at <= 4s, auto-plays on timeout
-  const { timeLeft } = useTurnTimer();
 
   // Safe room code & round/turn numbers
   const displayRoomCode = useMemo(() => {
@@ -349,7 +345,6 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
             <PlayerBadge
               player={opponent2}
               isCurrentTurn={isOpponent2Turn}
-              timeLeft={isOpponent2Turn ? timeLeft : undefined}
               align="left"
               className="animate-idle"
             />
@@ -358,7 +353,6 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
             <PlayerBadge
               player={opponent3}
               isCurrentTurn={isOpponent3Turn}
-              timeLeft={isOpponent3Turn ? timeLeft : undefined}
               align="right"
               className="animate-idle-delayed"
             />
@@ -383,7 +377,7 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
             data-purpose="lower-players"
             className="flex justify-between items-end pb-1 z-10 w-full"
           >
-            {/* Badge Anda (Bottom Left) dengan TurnTimerBadge & Indikator Giliran */}
+            {/* Badge Anda (Bottom Left) & Indikator Giliran */}
             <div
               id="userPlayerBadge"
               className="flex items-center gap-1.5 z-10"
@@ -392,7 +386,6 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
                 player={me}
                 isCurrentTurn={isMyTurn}
                 isMe={true}
-                timeLeft={isMyTurn ? timeLeft : undefined}
                 align="left"
               />
 
@@ -412,7 +405,6 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
             <PlayerBadge
               player={opponent4}
               isCurrentTurn={isOpponent4Turn}
-              timeLeft={isOpponent4Turn ? timeLeft : undefined}
               align="right"
               className="animate-idle-delayed z-10"
             />
