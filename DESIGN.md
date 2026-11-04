@@ -146,7 +146,7 @@ This design system establishes a high-voltage Neo-Brutalist visual identity engi
 
 ## Personality & Tone
 
-- **Tactical & Kinetic:** Sharp, high-stakes, responsive, and immediate. Turn timers, card plays, and sequence breaks land with physical weight.
+- **Tactical & Kinetic:** Sharp, high-stakes, responsive, and immediate. Card plays, tactical folds, and sequence breaks land with physical weight.
 - **Nostalgic yet Electric:** Warms the communal street-corner atmosphere of Indonesian *pos ronda* card nights into an amplified, arcade-grade cyber-retro interface.
 - **Unapologetic Rawness:** Heavy ink-traps, unsoftened edges, deliberate offset shadows, and saturated blocks of pigment that reject generic flat design or subtle gradient tropes.
 
@@ -161,7 +161,7 @@ The palette operates on uncompromising color collisions. Every hue is hyper-satu
 ### Palette Allocation
 
 - **Electric Mint (`#10B981`):** Primary brand accent, confirmed turns, active player indicator, successful sequences, and valid card plays.
-- **Canary Yellow (`#FFD000`):** Secondary action state, trump suit indicator, spade callouts, attention chips, and turn timers.
+- **Canary Yellow (`#FFD000`):** Secondary action state, trump suit indicator, spade callouts, attention chips, and active turn indicators.
 - **Punchy Coral Red (`#FF3B30`):** Tertiary tactical color, heart/diamond card suits, fouls, skips, penalty draws, and forfeit actions.
 - **Vibrant Sky Cyan (`#00D4FF`):** Utility accent, club/spade neutral states, round stats, match multipliers, and chat badges.
 - **Deep Black (`#000000` & `#0F172A`):** Pure outline ink, hard dropped cast shadows, and terminal-grade typographic marks.
@@ -260,6 +260,6 @@ The design system uses a strict **Soft Neo-Brutalist** curvature (`roundedness: 
 - Modal overlays do not blur the play area. They drop down with a solid `#000000` border (`3px`) and intense offset shadow (`6px 6px 0px #000000`), filled with high-contrast panel colors.
 - Header bars within cards or modals are segmented with a solid black dividing line (`2px solid #000000`) and distinct background fill (e.g., Canary Yellow banner on white card).
 
-### 6. Turn Timer HUD
+### 6. Turn Timer HUD (Deprecated)
 
-- Hard segmented progress bar with black block segments filling in real-time, accompanied by a vibrating countdown timer in Coral Red when `< 5` seconds remain.
+- *Status:* Fitur Turn Timer HUD dan logika countdown giliran telah didepresiasi dan dihapus dari antarmuka permainan.
