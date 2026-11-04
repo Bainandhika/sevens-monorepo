@@ -58,7 +58,6 @@ export interface GameStoreState {
   playSelectedCard: (card?: Card) => void;
   attemptFoldCard: (card?: Card) => void;
   confirmFoldKeyCard: () => void;
-  triggerTimeoutAutoAction: () => void;
   startRematch: () => void;
   leaveToLobby: () => void;
   syncServerRoomState: (state: RoomState) => void;
@@ -847,49 +846,6 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
       executeFold(pendingFoldCard, currentTurnPlayer, set, get);
       set({ pendingFoldCard: null });
       state.showToast('🛡️', 'Kartu Kunci ditutup (+30 Poin Denda)!');
-    },
-
-    triggerTimeoutAutoAction: () => {
-      const state = get();
-      const { roomState } = state;
-      if (!roomState || roomState.status !== 'playing') return;
-
-      const currentTurnPlayer = roomState.players.find(
-        (p) => p.id === roomState.currentTurn
-      );
-      if (!currentTurnPlayer || currentTurnPlayer.hand.length === 0) return;
-
-      const moves = getValidMovesForHand(
-        currentTurnPlayer.hand,
-        roomState.board,
-        roomState.aceMode
-      );
-
-      if (moves.length > 0) {
-        // Auto-play random valid move
-        const randomCard = moves[Math.floor(Math.random() * moves.length)];
-        state.playSelectedCard(randomCard);
-        state.showToast('⏱️', 'Waktu habis! Langkah otomatis dieksekusi');
-      } else {
-        // Auto-fold safest candidate (nominal terkecil di luar kartu 6, 8, dan 7)
-        const validCandidates = currentTurnPlayer.hand.filter((c) => c.rank !== 7);
-        if (validCandidates.length === 0) return;
-
-        const nonKeyCandidates = validCandidates.filter(
-          (c) => c.rank !== 6 && c.rank !== 8
-        );
-
-        let chosenFoldCard: Card;
-        if (nonKeyCandidates.length > 0) {
-          nonKeyCandidates.sort((a, b) => a.rank - b.rank);
-          chosenFoldCard = nonKeyCandidates[0];
-        } else {
-          chosenFoldCard = validCandidates[0];
-        }
-
-        executeFold(chosenFoldCard, currentTurnPlayer, set, get);
-        state.showToast('⏱️', 'Waktu habis! Langkah otomatis dieksekusi');
-      }
     },
 
     startRematch: () => {
