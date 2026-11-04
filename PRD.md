@@ -95,10 +95,6 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
   * `sessionToken` unik disimpan pada `sessionStorage` browser.
   * Masa toleransi reconnect adalah **30 detik**. Jika pemain kembali dalam kurun waktu tersebut, state kartu dan meja langsung disinkronkan.
   * Jika melewati 30 detik, kursi pemain diambil alih secara permanen oleh Bot Hard hingga ronde berakhir.
-* **AFK Protection (Turn Timer 10 Detik):**
-  * Batas waktu giliran adalah **10 detik (`10s`)** per pemain.
-  * Saat waktu tersisa $\le 4$ detik, badge timer memicu animasi berkedip merah (*urgency alert pulse*).
-  * Jika waktu habis (*timeout*), sistem mengeksekusi langkah otomatis teraman: menurunkan kartu valid acak, atau menutup kartu terkecil di luar kartu 6 dan 8.
 
 ### F3. Mitigasi Cold Start ("Silent Wake-Up") & Indikator Koneksi
 
@@ -145,7 +141,7 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
 * **Header Meja:**
   * Tombol *Side Drawer* menu burger, kode meja `#XXXXXX`, indikator putaran, dan status As (`Belum Terbuka`, `As Rendah (1)`, `As Tinggi (15)`).
 * **Area Pemain (3 Lawan):**
-  * Menampilkan avatar inisial, nama pemain, status giliran aktif (pinging badge), indikator timer (10s), dan rekor kekalahan kumulatif (`Kalah: Nx`).
+  * Menampilkan avatar inisial, nama pemain, status giliran aktif (pinging badge), dan rekor kekalahan kumulatif (`Kalah: Nx`).
   * **Privasi Taktis:** Untuk mempertahankan ketegangan dan strategi membaca kartu, sisa jumlah kartu maupun isi kartu tutup milik lawan **tidak ditampilkan** di meja.
 * **Kolom Kartu Meja (Central Board):**
   * Terdiri dari 4 kolom vertikal representatif (`♠ Sekop`, `♥ Hati`, `♣ Keriting`, `♦ Wajik`).
@@ -242,7 +238,7 @@ Setelah versi MVP v1.0 stabil dan memiliki basis pemain aktif, sistem monetisasi
               ▼
         [ Meja Permainan Taktis (Gameplay) ] ◄────────┘
           ├── Kartu 7 Pembuka Turun Otomatis
-          ├── Giliran 10 Detik per Pemain (Alert Pulse <= 4s)
+          ├── Indikator Giliran Aktif per Pemain
           ├── 4 Kolom Representatif (Tertinggi, 7, Terendah)
           ├── Rekor Akumulasi 'Kalah: Nx' pada Avatar Lawan
           ├── Dock: Pilih Kartu -> TUTUP / MAINKAN
