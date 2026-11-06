@@ -32,7 +32,7 @@ export interface SuitPlaceholderProps {
 
 /**
  * Placeholder slot for CentralBoard when anchor card 7 is not yet placed
- * Spec: w-full h-9 rounded-lg border-2 border-dashed border-black/30 bg-white/15 flex items-center justify-center.
+ * Spec: w-full h-[76px] sm:h-20 rounded-xl border-2 border-white/15 bg-black/20 flex items-center justify-center.
  */
 export function SuitPlaceholder({
   suit,
@@ -51,7 +51,7 @@ export function SuitPlaceholder({
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
       className={clsx(
-        'w-full h-9 rounded-lg border-2 border-dashed border-black/30 bg-white/15 flex items-center justify-center select-none font-display font-black transition-colors',
+        'w-full h-[76px] sm:h-20 rounded-xl border-2 border-white/15 bg-black/20 flex items-center justify-center select-none font-display font-black transition-all',
         onClick && 'cursor-pointer hover:border-black/60 hover:bg-white/25 active:scale-95',
         className
       )}
@@ -59,7 +59,7 @@ export function SuitPlaceholder({
       aria-label={label || (suit ? `Slot ${suit}` : 'Slot kartu kosong')}
     >
       {displaySymbol && (
-        <span className="text-base md:text-lg opacity-40 font-bold leading-none">
+        <span className="text-xl sm:text-2xl opacity-85 font-bold leading-none">
           {displaySymbol}
         </span>
       )}
@@ -75,8 +75,8 @@ export const PlaceholderSuit = SuitPlaceholder;
  *   warna teks '#000000' untuk ♠/♣ dan '#FF4343' untuk ♥/♦.
  *   Jika selected=true: bg-[#FFE600] border-[2.5px] border-black ring-2 ring-black -translate-y-2 z-20 shadow-[2.5px_2.5px_0px_#000000].
  *   Jika kartu adalah angka 6 atau 8 (isKeyCard), tampilkan indikator ikon kunci kecil '🔑' di sebelah lambang.
- * - Board: w-full h-9 rounded-lg border-2 border-black flex items-center justify-between px-2 font-display font-black;
- *   khusus angka 7 (Anchor): bg-[#FFE600] ring-1 ring-black; angka lain: bg-white.
+ * - Board: w-full h-[76px] sm:h-20 rounded-xl border-[2.5px] border-black p-1.5 sm:p-2 flex flex-col justify-between items-center font-display font-black shadow-[3px_3px_0px_#000000];
+ *   khusus angka 7 (Anchor): bg-[#FFE600]; angka lain: bg-white. Menampilkan rank di kiri atas, simbol lambang di tengah, dan rank kecil di kanan bawah (tanpa ikon kunci).
  * - Folded: w-full h-8 rounded-md border-2 border-black flex items-center justify-between px-1.5 select-none font-display font-black text-xs.
  * - Score-chip: compact strip chip for final scoreboard (red for key cards 6/8 + '30 POIN', yellow for Ace, white for others).
  */
@@ -278,27 +278,23 @@ export function PlayingCard({
         onDoubleClick={onDoubleTap ? handleDoubleClick : undefined}
         onKeyDown={onSelect ? handleKeyDown : undefined}
         className={clsx(
-          'w-full h-9 rounded-lg border-2 border-black flex items-center justify-between px-2 font-display font-black select-none transition-all duration-150',
-          isAnchor ? 'bg-[#FFE600] ring-1 ring-black shadow-[1.5px_1.5px_0px_#000000]' : 'bg-white',
-          isSelected && '-translate-y-1 shadow-[2.5px_2.5px_0px_#000000] ring-2 ring-black',
+          'w-full h-[76px] sm:h-20 rounded-xl border-[2.5px] border-black p-1.5 sm:p-2 relative flex flex-col justify-between items-center font-display font-black select-none transition-all duration-150 shadow-[3px_3px_0px_#000000]',
+          isAnchor ? 'bg-[#FFE600]' : 'bg-white',
+          isSelected && '-translate-y-1 shadow-[4px_4px_0px_#000000] ring-2 ring-black',
           (onSelect || onDoubleTap) && !disabled ? 'cursor-pointer hover:-translate-y-0.5' : 'cursor-default',
           disabled && 'opacity-60 cursor-not-allowed'
         )}
         style={{ color: textColor }}
       >
-        <span className="text-sm md:text-base font-black tracking-tight leading-none">
+        <span className="self-start text-xs sm:text-sm font-black tracking-tight leading-none">
           {rankLabel}
         </span>
-        <div className="flex items-center gap-1">
-          {isKey && (
-            <span className="text-[11px] leading-none" title="Kartu Kunci">
-              🔑
-            </span>
-          )}
-          <span className="text-base font-black leading-none">
-            {suitSymbol}
-          </span>
-        </div>
+        <span className="text-lg sm:text-xl font-black leading-none my-auto">
+          {suitSymbol}
+        </span>
+        <span className="self-end text-[10px] sm:text-xs font-bold tracking-tight leading-none opacity-65">
+          {rankLabel}
+        </span>
       </div>
     );
   }
