@@ -362,7 +362,7 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
           <section
             data-purpose="active-board-cards"
             aria-label="Papan Jalur 4 Lambang"
-            className="my-auto py-1 w-full flex items-center justify-center z-10"
+            className="my-auto py-0.5 w-full flex items-center justify-center z-10"
           >
             <CentralBoard
               board={currentBoard}
