@@ -145,11 +145,12 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
   * **Privasi Taktis:** Untuk mempertahankan ketegangan dan strategi membaca kartu, sisa jumlah kartu maupun isi kartu tutup milik lawan **tidak ditampilkan** di meja.
 * **Kolom Kartu Meja (Central Board):**
   * Terdiri dari 4 kolom vertikal representatif (`♠ Sekop`, `♥ Hati`, `♣ Keriting`, `♦ Wajik`).
-  * Setiap kolom cukup menampilkan maksimal 3 kartu agar pas di satu layar ponsel tanpa *scrolling*:
-    1. **Kartu Ujung Atas:** Nilai tertinggi yang telah turun (misal: 8, 9, dst.).
+  * Setiap kolom menampilkan maksimal 3 slot kartu berbentuk persegi-potret kompak (`h-[76px] sm:h-20`, sudut membulat `rounded-xl`, garis tepi `2.5px solid #000000`, dan bayangan tegas `3px 3px 0px #000000`) agar tetap proporsional di satu layar ponsel tanpa *scrolling*:
+    1. **Kartu Ujung Atas:** Nilai tertinggi yang telah turun di atas 7 (misal: 8, 9, dst. dengan background putih `#FFFFFF`).
     2. **Kartu 7 Tengah:** Kartu jangkar pembuka lambang (background kuning `#FFE600`).
-    3. **Kartu Ujung Bawah:** Nilai terendah yang telah turun (misal: 6, 5, dst.).
-  * Lambang yang belum dibuka menampilkan slot placeholder semi-transparan dengan icon lambang.
+    3. **Kartu Ujung Bawah:** Nilai terendah yang telah turun di bawah 7 (misal: 6, 5, dst. dengan background putih `#FFFFFF`).
+  * **Anatomi Kartu Meja:** Setiap kartu di meja menampilkan angka indeks utama di pojok kiri atas, simbol lambang (`♠`/`♥`/`♣`/`♦`) berukuran besar tepat di tengah kartu, serta angka indeks sekunder berukuran lebih kecil dengan opasitas lembut (`65%`) di pojok kanan bawah (tanpa ikon kunci `🔑`).
+  * **Slot Placeholder Lambang:** Lambang yang belum dibuka menampilkan slot placeholder berukuran identik (`h-[76px] sm:h-20`, `rounded-xl`) dengan latar gelap semi-transparan (`bg-black/20`, `border-2 border-white/15`) dan ikon lambang di tengah.
 * **Dock Interaksi Pemain Bawah:**
   * **Area Kiri (Kartu Tutup):** Kotak 2 kolom ramping yang menampilkan deretan kartu yang telah ditutup pemain beserta badge total penalti langsung (`P: XX`).
   * **Garis Separator:** Garis pemisah hitam tegas.
