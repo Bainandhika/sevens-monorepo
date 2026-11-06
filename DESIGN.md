@@ -224,17 +224,21 @@ The design system uses a strict **Soft Neo-Brutalist** curvature (`roundedness: 
 ### Geometry Rules
 
 - Never use fully pill-shaped or bubble radiuses for operational buttons; buttons must maintain boxy, angular dignity.
-- Playing cards utilize an 8px (`0.5rem`) corner radius combined with a `3px` solid border, preserving classic bicycle card proportions while maintaining harsh comic-book punch.
+- Playing cards on the central table (`variant="board"`) utilize a 12px (`0.75rem` / `rounded-xl`) corner radius, square-portrait proportions (`h-[76px] sm:h-20`), a `2.5px` solid black border, and a `3px 3px 0px #000000` hard offset shadow, while compact cards in hand and folded trays use a 6px (`rounded-md`) radius.
 - Badges and status pills may employ sharp 0px or soft 4px corners, always framed in `2px` black line-weights.
 
 ## Components
 
 ### 1. Playing Cards (Core Component)
 
-- **Face Card Styling:** Crisp white background (`#FFFFFF`), `3px solid #000000` border, `4px 4px 0px #000000` shadow.
-- **Corner Indices:** Font: `Space Grotesk Bold`. Suits rendered in pure flat colors: Spades/Clubs in `#0F172A`, Hearts/Diamonds in `#FF3B30`.
-- **Center Suit Illustration:** High-contrast graphic motifs with heavy outlines.
-- **Valid Play State:** Electric Mint glow-ring replaced with thick dashed border (`3px dashed #10B981`) and a vertical upward hover lift: `translateY(-12px)`.
+- **Face Card Styling (Table / Board Variant):** Square-portrait card (`w-full h-[76px] sm:h-20`, `rounded-xl`), crisp white background (`#FFFFFF`) for standard ranks and Canary Yellow (`#FFE600`) for anchor rank `7`, framed with a `2.5px solid #000000` border and `3px 3px 0px #000000` hard drop-shadow.
+- **3-Point Board Card Anatomy:**
+  - **Top-Left Index:** Primary rank label (`Space Grotesk`, `font-black`, `12px–14px`) aligned to top-left in flat suit color (`#000000` for `♠`/`♣`, `#FF4343` for `♥`/`♦`).
+  - **Center Suit Motif:** Centered suit symbol (`18px–20px`) in flat suit color. Key card icons (`🔑`) are omitted on board cards.
+  - **Bottom-Right Index:** Upright secondary rank label (`10px–12px`, `font-bold`, `65%` opacity) aligned to bottom-right.
+- **Unopened Suit Placeholder (`SuitPlaceholder`):** Matches board card dimensions (`w-full h-[76px] sm:h-20`, `rounded-xl`) with a dark translucent felt overlay (`bg-black/20`, `2px solid rgba(255, 255, 255, 0.15)`) and centered suit symbol (`85%` opacity).
+- **Hand & Folded Strip Variants:** Compact horizontal strips (`h-8` / `h-9`, `rounded-md`, `2px solid #000000` border) displaying rank on the left and key badge (`🔑` for 6 & 8) + suit symbol on the right.
+- **Valid Play State:** Electric Mint dashed target slot (`2px dashed #00D084`) on the board and upward selection lift (`-translate-y-2`) with Canary Yellow fill (`#FFE600`) in hand.
 - **Card Back:** Canary Yellow (`#FFD000`) canvas with a dense 45-degree black checkerboard or Indonesian batik-geometric diamond grid framed in `3px` black border.
 
 ### 2. Buttons
