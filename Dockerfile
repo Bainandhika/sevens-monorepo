@@ -23,6 +23,10 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/server /app/server
 
+# Memory limits for Render Free Tier (512 MB RAM)
+ENV GOMEMLIMIT=420MiB
+ENV GOGC=80
+
 # Default port for Render (Render sets $PORT automatically)
 ENV PORT=8080
 EXPOSE 8080
