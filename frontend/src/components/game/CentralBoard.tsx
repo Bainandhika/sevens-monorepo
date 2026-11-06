@@ -32,17 +32,17 @@ export const SUIT_COLUMNS: readonly Suit[] = [
  *
  * Spec (PRD Bab 6 Layar 3 & Stitch Gameplay):
  * - Terdiri dari 4 kolom vertikal representatif (♠ Sekop, ♥ Hati, ♣ Keriting, ♦ Wajik).
- * - Setiap kolom menampilkan maksimal 3 kartu vertikal (masing-masing h-9):
+ * - Setiap kolom menampilkan maksimal 3 kartu vertikal (masing-masing h-[76px] sm:h-20):
  *   (1) Slot Atas: jika maxPlayed > 7, tampilkan PlayingCard(variant='board', rank=maxPlayed);
- *       jika belum ada kartu di atas 7, tampilkan div h-9 opacity-0 pointer-events-none
+ *       jika belum ada kartu di atas 7, tampilkan div h-[76px] sm:h-20 opacity-0 pointer-events-none
  *       (atau slot dashed jika pemain sedang memilih kartu valid maxPlayed+1).
  *   (2) Slot Tengah (Jangkar 7): jika hasSeven=true, tampilkan PlayingCard(variant='board', rank=7)
- *       dengan background '#FFE600' border-2 border-black;
+ *       dengan background '#FFE600' border-[2.5px] border-black;
  *       jika hasSeven=false, tampilkan placeholder slot semi-transparan dengan ikon lambang (♠/♥/♣/♦).
  *   (3) Slot Bawah: jika minPlayed < 7, tampilkan PlayingCard(variant='board', rank=minPlayed);
- *       jika belum ada kartu di bawah 7, tampilkan div h-9 opacity-0.
+ *       jika belum ada kartu di bawah 7, tampilkan div h-[76px] sm:h-20 opacity-0.
  *
- * Desain sangat ramping agar pas di satu layar ponsel tanpa scrolling.
+ * Desain proporsional persegi-potret kompak agar pas di satu layar ponsel tanpa scrolling.
  */
 export const CentralBoard: React.FC<CentralBoardProps> = ({
   board,
@@ -58,7 +58,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
       role="region"
       aria-label="Papan Meja Permainan"
       className={clsx(
-        'grid grid-cols-4 gap-2 px-1 items-start w-full max-w-md mx-auto my-auto select-none',
+        'grid grid-cols-4 gap-2 sm:gap-2.5 px-1 items-center w-full max-w-[360px] sm:max-w-md mx-auto my-auto select-none',
         className
       )}
     >
@@ -106,7 +106,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
             key={suit}
             data-testid={`board-column-${suit}`}
             aria-label={`Kolom ${SUIT_NAMES_ID[suit]}`}
-            className="flex flex-col gap-1.5 md:gap-2 w-full items-center"
+            className="flex flex-col gap-2 w-full items-center"
           >
             {/* =========================================================================
              * (1) Slot Atas: Ujung Tertinggi (maxPlayed > 7)
@@ -114,7 +114,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
             {hasSeven && maxPlayed > 7 ? (
               <div
                 className={clsx(
-                  'w-full h-9 relative rounded-lg transition-all',
+                  'w-full h-[76px] sm:h-20 relative rounded-xl transition-all',
                   canPlayAbove &&
                     'ring-2 ring-[#00D084] shadow-[0_0_8px_rgba(0,208,132,0.6)] cursor-pointer'
                 )}
@@ -143,21 +143,21 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
                 title={`Mainkan ${RANK_LABELS[selectedCard.rank]}${SUIT_SYMBOLS[suit]} ke Meja`}
                 onClick={() => onPlaySelectedCard?.(selectedCard)}
                 className={clsx(
-                  'w-full h-9 rounded-lg border-2 border-dashed border-[#00D084] bg-[#00D084]/20',
-                  'flex items-center justify-between px-2 cursor-pointer animate-pulse select-none font-display font-black',
-                  'hover:bg-[#00D084]/35 active:scale-95 transition-all text-black shadow-[1px_1px_0px_#000000]'
+                  'w-full h-[76px] sm:h-20 rounded-xl border-2 border-dashed border-[#00D084] bg-[#00D084]/20',
+                  'flex flex-col items-center justify-center gap-0.5 cursor-pointer animate-pulse select-none font-display font-black',
+                  'hover:bg-[#00D084]/35 active:scale-95 transition-all text-black shadow-[2px_2px_0px_#000000]'
                 )}
               >
-                <span className="text-sm font-black text-emerald-950 leading-none">
+                <span className="text-sm sm:text-base font-black text-emerald-950 leading-none">
                   {RANK_LABELS[selectedCard.rank]}
                 </span>
-                <span className="text-[10px] font-bold text-emerald-900 uppercase tracking-tight">
+                <span className="text-xs font-bold text-emerald-900 uppercase tracking-tight leading-none">
                   +{SUIT_SYMBOLS[suit]}
                 </span>
               </button>
             ) : (
               <div
-                className="w-full h-9 opacity-0 pointer-events-none select-none"
+                className="w-full h-[76px] sm:h-20 opacity-0 pointer-events-none select-none"
                 aria-hidden="true"
               />
             )}
@@ -166,14 +166,14 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
              * (2) Slot Tengah: Jangkar 7 (Anchor Card 7)
              * ========================================================================= */}
             {hasSeven ? (
-              <div className="w-full h-9">
+              <div className="w-full h-[76px] sm:h-20">
                 <PlayingCard
                   card={{ suit, rank: 7 as Rank }}
                   variant="board"
                 />
               </div>
             ) : (
-              <div className="w-full h-9">
+              <div className="w-full h-[76px] sm:h-20">
                 <SuitPlaceholder
                   suit={suit}
                   className={clsx(
@@ -200,7 +200,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
             {hasSeven && minPlayed < 7 ? (
               <div
                 className={clsx(
-                  'w-full h-9 relative rounded-lg transition-all',
+                  'w-full h-[76px] sm:h-20 relative rounded-xl transition-all',
                   canPlayBelow &&
                     'ring-2 ring-[#00D084] shadow-[0_0_8px_rgba(0,208,132,0.6)] cursor-pointer'
                 )}
@@ -229,21 +229,21 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
                 title={`Mainkan ${RANK_LABELS[selectedCard.rank]}${SUIT_SYMBOLS[suit]} ke Meja`}
                 onClick={() => onPlaySelectedCard?.(selectedCard)}
                 className={clsx(
-                  'w-full h-9 rounded-lg border-2 border-dashed border-[#00D084] bg-[#00D084]/20',
-                  'flex items-center justify-between px-2 cursor-pointer animate-pulse select-none font-display font-black',
-                  'hover:bg-[#00D084]/35 active:scale-95 transition-all text-black shadow-[1px_1px_0px_#000000]'
+                  'w-full h-[76px] sm:h-20 rounded-xl border-2 border-dashed border-[#00D084] bg-[#00D084]/20',
+                  'flex flex-col items-center justify-center gap-0.5 cursor-pointer animate-pulse select-none font-display font-black',
+                  'hover:bg-[#00D084]/35 active:scale-95 transition-all text-black shadow-[2px_2px_0px_#000000]'
                 )}
               >
-                <span className="text-sm font-black text-emerald-950 leading-none">
+                <span className="text-sm sm:text-base font-black text-emerald-950 leading-none">
                   {RANK_LABELS[selectedCard.rank]}
                 </span>
-                <span className="text-[10px] font-bold text-emerald-900 uppercase tracking-tight">
+                <span className="text-xs font-bold text-emerald-900 uppercase tracking-tight leading-none">
                   -{SUIT_SYMBOLS[suit]}
                 </span>
               </button>
             ) : (
               <div
-                className="w-full h-9 opacity-0 pointer-events-none select-none"
+                className="w-full h-[76px] sm:h-20 opacity-0 pointer-events-none select-none"
                 aria-hidden="true"
               />
             )}
