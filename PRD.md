@@ -66,6 +66,12 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
   * Selama pemain berada di room yang sama melintasi beberapa ronde (*Rematch*), server mencatat jumlah kekalahan kumulatif masing-masing pemain.
   * Pemain yang finis pada peringkat ke-4 (poin penalti tertinggi) pada setiap ronde mendapatkan tambahan `+1` pada indikator `Kalah: Nx`.
 
+* **Aturan Kondisi RT & RW (Rekor Komunitas Room):**
+  * **Kondisi RT (KEPALA RT):** Pemain finis pada peringkat ke-4 (Juru Kunci / penalti tertinggi) sebanyak 3 kali berturut-turut (`consecutiveLosses == 3`) di dalam room yang sama.
+  * **Kondisi RW (KEPALA RW):** Pemain finis pada peringkat ke-4 (Juru Kunci) sebanyak 6 kali berturut-turut (`consecutiveLosses >= 6`, yaitu 2 streak RT berturut-turut tanpa terputus). Status pemain seketika di-upgrade dari RT menjadi RW.
+  * **Eksklusivitas Gelar (Single Active Holder):** Di dalam satu room hanya boleh ada maksimal 1 pemegang gelar RT atau RW dalam satu waktu. Ketika ada pemain lain yang mencapai RT (`consecutiveLosses == 3`), gelar pemegang sebelumnya langsung dicabut dan di-reset kembali ke status netral (`NONE`).
+  * **Reset Streak:** Finis di peringkat 1, 2, atau 3 (bukan Juru Kunci) langsung mereset nilai `consecutiveLosses` pemain tersebut menjadi `0`. Pemegang gelar RT/RW yang finis di peringkat 1–3 tetap mempertahankan gelarnya sampai ada pemain lain yang berhasil mencapai `consecutiveLosses == 3`.
+
 ---
 
 ## 5. Kebutuhan Fungsional (Functional Requirements)
@@ -105,13 +111,33 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
 * **Modal Cold Start Server:**
   * Jika pemain menekan Buat/Gabung Room saat server masih proses bangun, sistem menampilkan modal Neo-Brutalist: *"Sedang menyiapkan server gratisan (~20 detik)..."* dengan animasi loading bar bersegmen dan *auto-retry* WebSocket setiap 3 detik.
 
+### F4. Ritual Kocok Kartu (Shuffle Ritual) & Waiting Lounge Interaktif
+
+* **Ritual Kocok Kartu Manual Juru Kunci (9 Titik Interaktif):**
+  * Pemain yang menempati peringkat ke-4 (Juru Kunci / penalti tertinggi) wajib melakukan ritual mengocok kartu manual melalui touchpad interaktif 9 titik berpola "TACTICAL-Z" (`[0, 2, 6, 8]`) sebanyak 3 putaran.
+  * Deteksi pola dilengkapi feedback visual garis lintasan SVG. Jika pemain melakukan kesalahan gestur sebanyak 3 kali berturut-turut, sistem otomatis mengaktifkan *auto-reshuffle* untuk kelancaran jalannya permainan.
+* **Ruang Tunggu Interaktif (Waiting Lounge untuk 3 Pemain Lainnya):**
+  * Tiga pemain yang tidak kalah berada di ruang tunggu santai yang memvisualisasikan animasi dan progres kocokan kartu Juru Kunci secara real-time.
+  * Menyediakan tombol interaksi sosial ringan tanpa fitur chat teks: tombol reaksi `☕ Sruput` dan tombol pemicu semangat `👋 SEMANGATIN!`.
+  * Menyediakan tombol akses modal `📜 LOG RONDE` untuk meninjau riwayat kartu pembuka, status As, dan rincian penalti ronde sebelumnya.
+
+### F5. Papan Skor Transparan & Rematch Cepat (Rekor Komunitas RT/RW)
+
+* **Rincian Kartu Transparan 4 Pemain:**
+  * Menampilkan 4 kartu ringkas terurut 1–4 dengan rincian kartu terbuka/tertutup, denda flat 30 poin kartu kunci 6/8, penalti nominal, dan status kalah kumulatif (`Kalah: Nx`).
+* **Kotak Status Eksklusif RT/RW (`STATUS RT / RW #XXXXXX`):**
+  * Menampilkan pemegang tunggal aktif penobatan KEPALA RT atau KEPALA RW di meja tersebut beserta telemetry rekor kekalahan beruntun.
+* **Rematch Instan via Ritual:**
+  * Tombol `Main Lagi` (Rematch) langsung mengarahkan meja menuju Layar 5 (Ritual Kocok Kartu) tanpa mereset kode room dan mempertahankan rekor kekalahan beruntun komunitas.
+
 ---
 
 ## 6. Spesifikasi Antarmuka & Layar (UI/UX Neo-Brutalism)
 
 ### Layar 1: Lobi Utama
 
-* **Header & Identitas:** Logo `7-an` bernuansa Neo-Brutalist dengan kartu as/sekop aksen kuning `#FFE600`.
+* **Header & Identitas:** Bar header hijau mint (`#00D084`, border hitam 3px) dengan logo kartu 4-lambang angka 7, judul `MENU`, dan tombol toggle audio di sisi kanan (`audioEnabled` / suara aktif).
+* **Hero Banner:** Banner hijau mint (`#00D084`, border 3px, shadow 4px) dengan judul besar `7-an`, kapsul teks putih `Tentukan tujuanmu!`, serta ilustrasi kartu 7 miring artistik di kanan.
 * **Form Profil Guest:**
   * Kolom input *Nickname* dibatasi maksimal **7 karakter** alfanumerik.
   * **Tombol Dadu (Randomizer):** Tombol di samping input nama untuk mengacak nama guest secara instan dari preset lokal (contoh: `Sekop07`, `Wajik99`, `Ksatria`, `Taktik7`).
@@ -120,61 +146,88 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
   * **Mode Offline (Versus AI):** Selector segmented 3 opsi (*Easy*, *Medium*, *Hard*) dan tombol mulai offline.
   * **Mode Online (MABAR):** Tombol `Buat Room Baru` dan formulir input `Kode Room 6 Karakter` dengan tombol `Gabung`.
 * **Bottom Nav & Modal Panduan Aturan:**
-  * Navigasi bawah bertombol `Lobi` dan `Aturan`.
-  * Modal aturan memuat panduan ringkas 7-an yang seragam: aturan buka 7, urutan sambungan, aturan tutup kartu, denda flat 30 poin kartu 6/8, dan penentuan juara berdasarkan **poin penalti terendah**.
+  * Navigasi bawah bertombol `MENU` (menggantikan 'Lobi') dan `Aturan`.
+  * Modal aturan memuat panduan ringkas 7-an yang seragam: aturan buka 7, urutan sambungan, aturan tutup kartu, denda flat 30 poin kartu 6/8, penentuan juara berdasarkan **poin penalti terendah**, dan status rekor RT/RW.
 
-### Layar 2: Ruang Tunggu (Waiting Room)
+### Layar 2: Ruang Tunggu (Waiting Room / Ruang Tunggu MABAR)
 
-* **Header:** Tombol kembali ke lobi dan judul *Ruang Tunggu*.
-* **Kartu Kode Room:** Menampilkan 6 karakter kode meja dengan tombol `Salin Kode` (disertai feedback toast).
+* **Header:** Bar hijau mint (`#10B981`, border 3px) dengan tombol kembali, judul `RUANG TUNGGU`, dan tombol toggle audio di sisi kanan.
+* **Banner Kode Room:** Banner kuning mencolok (`#FFD000` / `#FFE600`) dengan kotak putih bersarang (*nested white box*) bergaris tepi hitam tebal berisi label `ROOM ID`, kode meja `#{roomCode}`, dan tombol `SALIN` instan (disertai feedback toast).
+* **Bar Telemetri 2-Kolom:**
+  * Kolom Kiri: Kartu putih menampilkan indikator kesiapan `X/Y PEMAIN SIAP`.
+  * Kolom Kanan: Kartu gelap (`#283044` teks putih) mengunci status bot `🔒 BOT: HARD`.
 * **Daftar 4 Slot Kursi:**
-  * Slot 1: Host (Badge kuning `HOST`, status `Siap`).
-  * Slot 2: Pemain Manusia tamu (Badge inisial, tombol/status `Siap` vs `Menunggu`).
-  * Slot 3 & 4: Kursi cadangan bot (Garis putus-putus, icon robot, badge hitam `BOT HARD`).
+  * Slot 1: Host manusia (Badge kuning `HOST`, status `Siap`).
+  * Slot 2: Tamu manusia (Badge inisial, status `Siap` vs `Menunggu`).
+  * Slot 3 & 4: Slot bot bernama taktis (`Cermat8`, `Taktik7`, `Agresif9`) dengan badge hitam `BOT` dan badge gelap `⚡ AUTO SIAP`.
 * **Kontrol Aksi Bawah:**
   * Tombol utama `Mulai Permainan`: Hanya aktif jika minimal 2 pemain manusia telah siap.
-  * Indikator `Atur Bot: Hard` (Status terkunci).
-  * Tombol `Keluar Ruangan`.
+  * Baris sekunder: Tombol kiri putih `ATURAN` dan tombol kanan merah coral `BUBARKAN MEJA` / `KELUAR`.
 
 ### Layar 3: Meja Permainan Taktis (Gameplay)
 
 * **Header Meja:**
-  * Tombol *Side Drawer* menu burger, kode meja `#XXXXXX`, indikator putaran, dan status As (`Belum Terbuka`, `As Rendah (1)`, `As Tinggi (15)`).
-* **Area Pemain (3 Lawan):**
-  * Menampilkan avatar inisial, nama pemain, status giliran aktif (pinging badge), dan rekor kekalahan kumulatif (`Kalah: Nx`).
+  * Bar putih bersih dengan tombol *Side Drawer* menu burger, judul `RONDE {roundNumber}`, dan indikator status As (`Belum Terbuka`, `As Rendah (1)`, `As Tinggi (15)`).
+* **Area Pemain (3 Lawan & PlayerBadge):**
+  * Menampilkan avatar inisial, nama pemain, status giliran aktif (*pinging border*), rekor kekalahan kumulatif (`Kalah: Nx`), tag gelap `BOT` untuk bot AI, serta badge eksklusif `RT` / `RW` berwarna merah marun tua (`#8B0000`, border hitam 1.5px, shadow 1px) bagi pemegang status aktif di room.
   * **Privasi Taktis:** Untuk mempertahankan ketegangan dan strategi membaca kartu, sisa jumlah kartu maupun isi kartu tutup milik lawan **tidak ditampilkan** di meja.
 * **Kolom Kartu Meja (Central Board):**
   * Terdiri dari 4 kolom vertikal representatif (`♠ Sekop`, `♥ Hati`, `♣ Keriting`, `♦ Wajik`).
-  * Setiap kolom menampilkan maksimal 3 slot kartu berbentuk persegi-potret kompak (`h-[76px] sm:h-20`, sudut membulat `rounded-xl`, garis tepi `2.5px solid #000000`, dan bayangan tegas `3px 3px 0px #000000`) agar tetap proporsional di satu layar ponsel tanpa *scrolling*:
-    1. **Kartu Ujung Atas:** Nilai tertinggi yang telah turun di atas 7 (misal: 8, 9, dst. dengan background putih `#FFFFFF`).
-    2. **Kartu 7 Tengah:** Kartu jangkar pembuka lambang (background kuning `#FFE600`).
-    3. **Kartu Ujung Bawah:** Nilai terendah yang telah turun di bawah 7 (misal: 6, 5, dst. dengan background putih `#FFFFFF`).
-  * **Anatomi Kartu Meja:** Setiap kartu di meja menampilkan angka indeks utama di pojok kiri atas, simbol lambang (`♠`/`♥`/`♣`/`♦`) berukuran besar tepat di tengah kartu, serta angka indeks sekunder berukuran lebih kecil dengan opasitas lembut (`65%`) di pojok kanan bawah (tanpa ikon kunci `🔑`).
-  * **Slot Placeholder Lambang:** Lambang yang belum dibuka menampilkan slot placeholder berukuran identik (`h-[76px] sm:h-20`, `rounded-xl`) dengan latar gelap semi-transparan (`bg-black/20`, `border-2 border-white/15`) dan ikon lambang di tengah.
-* **Dock Interaksi Pemain Bawah:**
-  * **Area Kiri (Kartu Tutup):** Kotak 2 kolom ramping yang menampilkan deretan kartu yang telah ditutup pemain beserta badge total penalti langsung (`P: XX`).
-  * **Garis Separator:** Garis pemisah hitam tegas.
-  * **Area Kanan (Kartu Tangan):** Grid 4 kolom berisi kartu tangan pemain dengan badge jumlah sisa kartu.
-  * **Mekanisme 2 Tombol Aksi:**
-    * Tombol **`TUTUP (Kartu)`** (merah coral `#FF4343`). Terkunci jika kartu yang dipilih atau kartu lain masih sah dimainkan (Anti-Bohong).
-    * Tombol **`MAINKAN (Kartu)`** (hijau mint `#00D084`). Aktif hanya jika kartu yang dipilih sah disambung ke meja.
-    * Pemain memilih kartu dengan mengetuknya (kartu naik ke atas dengan ring kuning), lalu menekan salah satu tombol, atau menggunakan gestur ketuk dua kali (*double-tap*).
+  * Setiap kolom kartu menumpuk secara vertikal dengan overlap (`-space-y-6` sm:`-space-y-7`, z-index bertingkat 10, 20, 30) menampilkan 3 slot kartu persegi-potret kompak (`h-[76px] sm:h-20`, sudut membulat `rounded-xl`, garis tepi `2.5px solid #000000`, bayangan `3px 3px 0px #000000`):
+    1. **Kartu Ujung Atas (z-10):** Nilai tertinggi yang telah turun di atas 7 (misal: 8, 9, dst. background putih `#FFFFFF`).
+    2. **Kartu 7 Tengah (z-20):** Kartu jangkar pembuka lambang (background kuning `#FFE600`).
+    3. **Kartu Ujung Bawah (z-30):** Nilai terendah yang telah turun di bawah 7 (misal: 6, 5, dst. background putih `#FFFFFF`).
+  * **Slot Placeholder Lambang:** Lambang yang belum dibuka menampilkan slot placeholder berukuran identik dengan latar gelap semi-transparan (`bg-black/20`, `border-2 border-white/15`) dan ikon lambang di tengah.
+* **Dock Interaksi Pemain Bawah (PlayerInteractionDock - 3-Tier Vertical Stack):**
+  * **Tingkat 1 (Atas - Tombol Aksi):** Dua tombol berdampingan selebar layar (`grid grid-cols-2 gap-2`):
+    * Tombol **`TUTUP`** (merah coral `#FF5A5F` / `#FF4343`). Terkunci jika kartu yang dipilih atau kartu tangan lainnya masih sah dimainkan (Anti-Bohong).
+    * Tombol **`MAINKAN`** (hijau mint `#00D084`). Aktif jika kartu terpilih sah dimainkan ke meja.
+  * **Tingkat 2 (Tengah - Rak Kartu Tangan):** Kontainer hijau tua pekat (`#1B4332`, border 2px hitam, shadow 2px) dengan header `KARTU TANGAN ({hand.length})` dan grid 2-baris tanpa scroll:
+    * Baris 1 (`grid-cols-7 gap-1`): Kartu tangan 1–7 berformat mini-card vertikal (`h-12 sm:h-14`, indeks kiri atas, simbol kanan bawah, ikon `🔑` kanan atas untuk kartu 6 & 8).
+    * Baris 2 (`grid-cols-6 gap-1 px-3 mt-1`): Kartu tangan 8–13.
+    * Dukungan aksi: Ketuk untuk memilih (highlight kuning `#FFE600`) atau ketuk dua kali (*double-tap*) untuk langsung memainkan/menutup kartu.
+  * **Tingkat 3 (Bawah - Strip Kartu Tutup):** Strip horizontal ramping (`#1B4332`, border 2px hitam) dengan label `KARTU TUTUP`, badge akumulasi `Total: -{penalty} Poin`, serta deretan kartu tertutup mini yang dapat digulir horizontal.
 * **Modal Konfirmasi Kartu Kunci (6 & 8):**
-  * Jika pemain hendak menutup kartu 6 atau 8, muncul modal peringatan risiko tinggi bergaya Neo-Brutalism yang menegaskan adanya denda flat `+30 Poin Denda`, dengan pilihan `Tetap Tutup (+30 Poin)` atau `Batal (Pilih Kartu Lain)`.
+  * Jika pemain hendak menutup kartu 6 atau 8, muncul modal peringatan risiko tinggi bergaya Neo-Brutalism yang menegaskan denda flat `+30 Poin Denda`, dengan pilihan `Tetap Tutup (+30 Poin)` atau `Batal (Pilih Kartu Lain)`.
 * **Side Drawer Menu:**
-  * Menampilkan informasi nama pemain, status online, indikator latensi real-time (**`Ping: XX ms`**), tombol `Aturan Ringkas`, tombol `Papan Skor Sementara`, dan tombol `Keluar ke Lobi`.
-  * **Tanpa Saldo Koin:** Elemen saldo koin/mata uang ditiadakan sepenuhnya pada v1.0.
+  * Menampilkan informasi nama pemain, status online, indikator latensi real-time (**`Ping: XX ms`**), tombol `Aturan Ringkas`, tombol **`PENGATURAN`** (membuka `SettingsModal` audio & preferensi kontrol), kotak info Room ID (`#{roomCode}`) dan durasi match (*Elapsed Timer* `MM:SS`), serta tombol `Keluar dari Permainan`. Opsi 'Papan Skor Sementara' ditiadakan.
 
-### Layar 4: Papan Skor Akhir & Rematch
+### Layar 4: Papan Skor Akhir (Scoreboard)
 
-* **Daftar Peringkat Akhir (Leaderboard 1–4):**
-  * Peringkat 1: Pemenang utama (Background kuning mencolok `#FFE600`, badge hijau `PEMENANG`, total penalti terendah).
-  * Peringkat 2 & 3: Runner-up (Kartu putih, rincian kartu sisa).
-  * Peringkat 4: Pemain kalah (Background merah coral `#FF4D4D`, badge hitam `JURU KUNCI`, penalti tertinggi).
-  * Rincian kartu yang terbuka menampilkan denda flat 30 poin untuk kartu 6 & 8 yang tertutup serta perhitungan nilai kartu As yang terkunci.
-* **Kontrol Aksi Pasca-Permainan:**
-  * **Tombol `Main Lagi` (Rematch):** Menampilkan modal sinkronisasi 4 pemain dengan hitung mundur 3 detik untuk mengocok ulang kartu dan langsung memulai ronde baru di meja yang sama. Nilai rekor `Kalah: Nx` diakumulasikan.
-  * **Tombol `Kembali ke Lobi`:** Mengakhiri sesi meja secara aman dan mengarahkan pengguna kembali ke **Layar Lobi Utama (Screen 1)**. Seluruh simulasi meja taruhan publik diabaikan.
+* **Header & Subheader:** Bar hijau mint (`#10B981`, border 3px) dengan judul `PAPAN SKOR` dan Room ID pill `#{roomCode}`. Subheader menampilkan badge kiri `RONDE {roundNumber}` dan badge kanan `🔒 STATUS AS: {aceModeLabel}`.
+* **Bagian 1: 'RINCIAN KARTU PEMAIN' (Leaderboard 1–4):**
+  * 4 kartu pemain kompak terurut berdasarkan peringkat poin penalti terendah (1) hingga tertinggi (4):
+    * Peringkat 1: Pemenang utama (Badge `1ST` pada avatar, pill hijau `PEMENANG`, total penalti terendah).
+    * Peringkat 2 & 3: Runner-up (Pill `#2`, `#3`, rincian kartu sisa).
+    * Peringkat 4: Juru Kunci (Pill merah `JURU KUNCI`, penalti tertinggi).
+  * Setiap kartu menampilkan nama, tag `ANDA` / `BOT`, total poin penalti, strip kartu tutup/terbuka (`Tutup: 4♦ 10♥` atau `✨ PERFECT CLEAR`), akumulasi `Kalah: Nx`, serta badge animasi `RT!` / `RW!` bila pemain memegang gelar.
+* **Bagian 2: Kartu Eksklusif 'STATUS RT / RW #{roomCode}':**
+  * Kartu Neo-Brutalist tebal (`border-[3px] border-black shadow-[4px_4px_0px_#000000]`) di bagian bawah layar:
+    * Jika terdapat pemegang aktif: Menampilkan avatar, nama, tag pemain/bot, badge berdenyut `KEPALA RT` (merah marun `#8B0000`) atau `KEPALA RW` (emas/merah), dan deskripsi pencapaian rekor ('Kalah 3x berturut-turut di room yang sama' atau 'Mencapai 2x status RT beruntun (6x Kalah Beruntun)').
+    * Jika belum ada pemegang: Menampilkan kartu status netral 'BELUM ADA KEPALA RT / RW' ('Belum ada pemain yang kalah 3x berturut-turut di meja ini.').
+* **Kontrol Aksi Footer:**
+  * Tombol utama kuning Canary `#FFE600`: `MAIN LAGI (REMATCH)` (mengarahkan ke Layar 5: Ritual Kocok Kartu).
+  * Tombol sekunder putih: `KEMBALI KE MENU` (kembali ke lobi utama).
+
+### Layar 5: Ritual Kocok Kartu (9 Titik Interaktif) & Waiting Lounge
+
+* **Menggantikan Countdown Modal 3 Detik:** Memberikan pengalaman interaktif berbobot taktis bagi pemain kalah dan ruang santai interaktif bagi pemain lainnya.
+* **Cabang A (Untuk Pemain Juru Kunci - Layar Kocok Kartu Manual):**
+  * Header hijau mint (`#10B981`) bertuliskan `RITUAL KOCOK KARTU` dengan telemetry room dan nomor ronde berikutnya.
+  * Frame instruksi `KOCOK KARTU MANUAL` dengan indikator putaran `PUTARAN {step} / 3` dan bar progres 3-segmen.
+  * Pita informasi tengah: Komponen `TARGET POLA: TACTICAL-Z` (diagram 3x3 SVG pola `[0, 2, 6, 8]`) dan `STATUS TUMPUKAN` animasi kartu acak (`33%` $\rightarrow$ `66%` $\rightarrow$ `100%`).
+  * **Touchpad Gestur 9 Titik:** Area kanvas interaktif 3x3 dot dengan pelacak pointer/mouse/touch dan garis lintasan SVG:
+    * Pemain wajib menghubungkan titik pola Z (`0 -> 2 -> 6 -> 8`) sebanyak 3 putaran berturut-turut untuk menyelesaikan pengocokan kartu.
+    * Setiap kesalahan menggambar pola menambah `failCount`. Jika salah 3 kali berturut-turut (`failCount >= 3`), sistem menyalakan peringatan `AUTO-RESHUFFLE AKTIF!` dan otomatis melanjutkan ke ronde berikutnya setelah 800ms demi mencegah *soft-lock*.
+    * Dilengkapi tombol `RESET` manual jika garis salah di tengah jalan.
+* **Cabang B (Untuk 3 Pemain Lainnya - Layar Waiting Lounge "Santai Kawan"):**
+  * Banner kuning mencolok bertuliskan `RITUAL WAJIB KALAH` dan pesan bersahabat: *"Santai kawan, {loserName} sedang mengocok kartu"*.
+  * Menampilkan profil Juru Kunci ronde lalu beserta total penaltinya dan panggung animasi 3 kartu kocok (*"Idih, idiiiiih....."*).
+  * Bar progres 3-segmen `RITUAL GESTUR 9 TITIK` yang melacak tahapan kocokan Juru Kunci secara langsung (`Pola 1/3` $\rightarrow$ `Pola 2/3` $\rightarrow$ `Pola 3/3`, atau simulasi bot ~4.5 detik jika Juru Kunci adalah AI).
+  * Daftar kondisi 3 pemain di meja dengan tombol reaksi instan `☕ Sruput`.
+  * Tombol aksi bawah: Tombol `👋 SEMANGATIN!` (menyalakan efek dorongan semangat ke meja selama 1.5 detik) dan tombol `📜 LOG RONDE` (membuka modal detail rekap ronde sebelumnya).
+* **Modal Log & Rekap Ronde (`📜 LOG RONDE`):**
+  * Modal popup Neo-Brutalist yang menampilkan kartu 7 pembuka ronde lalu, status As akhir, rincian kartu tangan tertutup, denda flat kartu 6/8, dan total penalti setiap pemain.
 
 ---
 
@@ -251,8 +304,17 @@ Setelah versi MVP v1.0 stabil dan memiliki basis pemain aktif, sistem monetisasi
           ├── Juara 1: Poin Penalti Terendah (PEMENANG)
           ├── Posisi 4: Poin Penalti Tertinggi (JURU KUNCI / Kalah +1)
           ├── Rincian Denda Flat 30 Poin (Kartu 6/8) & Kartu As
+          ├── Kartu Status Eksklusif Pemegang RT / RW (#XXXXXX)
           │
-          ├── [ Tombol: Main Lagi (Rematch) ] ─── (Countdown 3 Detik di Meja yang Sama)
+          ├── [ Tombol: Main Lagi (Rematch) ]
+          │     │
+          │     ▼
+          │   [ Layar 5: Ritual Kocok Kartu / Waiting Lounge ]
+          │     ├── Juru Kunci: Ritual 9-Titik Pola TACTICAL-Z (3 Putaran / Auto-Reshuffle)
+          │     └── 3 Pemain Lain: Waiting Lounge (☕ Sruput, 👋 SEMANGATIN!, 📜 LOG RONDE)
+          │     │
+          │     ▼
+          │   [ Meja Permainan Taktis (Gameplay) Ronde Baru ]
           │
           └── [ Tombol: Kembali ke Lobi ] ────── (Reset Sesi -> Kembali ke Lobi Utama)
 ```
