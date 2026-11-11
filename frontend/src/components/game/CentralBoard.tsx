@@ -106,15 +106,15 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
             key={suit}
             data-testid={`board-column-${suit}`}
             aria-label={`Kolom ${SUIT_NAMES_ID[suit]}`}
-            className="flex flex-col gap-2 w-full items-center"
+            className="flex flex-col -space-y-6 sm:-space-y-7 w-full items-center"
           >
             {/* =========================================================================
-             * (1) Slot Atas: Ujung Tertinggi (maxPlayed > 7)
+             * (1) Slot Atas: Ujung Tertinggi (maxPlayed > 7) - z-10
              * ========================================================================= */}
             {hasSeven && maxPlayed > 7 ? (
               <div
                 className={clsx(
-                  'w-full h-[76px] sm:h-20 relative rounded-xl transition-all',
+                  'w-full h-[76px] sm:h-20 relative z-10 rounded-xl transition-all',
                   canPlayAbove &&
                     'ring-2 ring-[#00D084] shadow-[0_0_8px_rgba(0,208,132,0.6)] cursor-pointer'
                 )}
@@ -143,7 +143,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
                 title={`Mainkan ${RANK_LABELS[selectedCard.rank]}${SUIT_SYMBOLS[suit]} ke Meja`}
                 onClick={() => onPlaySelectedCard?.(selectedCard)}
                 className={clsx(
-                  'w-full h-[76px] sm:h-20 rounded-xl border-2 border-dashed border-[#00D084] bg-[#00D084]/20',
+                  'w-full h-[76px] sm:h-20 relative z-10 rounded-xl border-2 border-dashed border-[#00D084] bg-[#00D084]/20',
                   'flex flex-col items-center justify-center gap-0.5 cursor-pointer animate-pulse select-none font-display font-black',
                   'hover:bg-[#00D084]/35 active:scale-95 transition-all text-black shadow-[2px_2px_0px_#000000]'
                 )}
@@ -157,23 +157,23 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
               </button>
             ) : (
               <div
-                className="w-full h-[76px] sm:h-20 opacity-0 pointer-events-none select-none"
+                className="w-full h-[76px] sm:h-20 relative z-10 opacity-0 pointer-events-none select-none"
                 aria-hidden="true"
               />
             )}
 
             {/* =========================================================================
-             * (2) Slot Tengah: Jangkar 7 (Anchor Card 7)
+             * (2) Slot Tengah: Jangkar 7 (Anchor Card 7) - z-20
              * ========================================================================= */}
             {hasSeven ? (
-              <div className="w-full h-[76px] sm:h-20">
+              <div className="w-full h-[76px] sm:h-20 relative z-20">
                 <PlayingCard
                   card={{ suit, rank: 7 as Rank }}
                   variant="board"
                 />
               </div>
             ) : (
-              <div className="w-full h-[76px] sm:h-20">
+              <div className="w-full h-[76px] sm:h-20 relative z-20">
                 <SuitPlaceholder
                   suit={suit}
                   className={clsx(
@@ -195,12 +195,12 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
             )}
 
             {/* =========================================================================
-             * (3) Slot Bawah: Ujung Terendah (minPlayed < 7)
+             * (3) Slot Bawah: Ujung Terendah (minPlayed < 7) - z-30
              * ========================================================================= */}
             {hasSeven && minPlayed < 7 ? (
               <div
                 className={clsx(
-                  'w-full h-[76px] sm:h-20 relative rounded-xl transition-all',
+                  'w-full h-[76px] sm:h-20 relative z-30 rounded-xl transition-all',
                   canPlayBelow &&
                     'ring-2 ring-[#00D084] shadow-[0_0_8px_rgba(0,208,132,0.6)] cursor-pointer'
                 )}
@@ -229,7 +229,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
                 title={`Mainkan ${RANK_LABELS[selectedCard.rank]}${SUIT_SYMBOLS[suit]} ke Meja`}
                 onClick={() => onPlaySelectedCard?.(selectedCard)}
                 className={clsx(
-                  'w-full h-[76px] sm:h-20 rounded-xl border-2 border-dashed border-[#00D084] bg-[#00D084]/20',
+                  'w-full h-[76px] sm:h-20 relative z-30 rounded-xl border-2 border-dashed border-[#00D084] bg-[#00D084]/20',
                   'flex flex-col items-center justify-center gap-0.5 cursor-pointer animate-pulse select-none font-display font-black',
                   'hover:bg-[#00D084]/35 active:scale-95 transition-all text-black shadow-[2px_2px_0px_#000000]'
                 )}
@@ -243,7 +243,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
               </button>
             ) : (
               <div
-                className="w-full h-[76px] sm:h-20 opacity-0 pointer-events-none select-none"
+                className="w-full h-[76px] sm:h-20 relative z-30 opacity-0 pointer-events-none select-none"
                 aria-hidden="true"
               />
             )}
