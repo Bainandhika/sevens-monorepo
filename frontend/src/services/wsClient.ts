@@ -1,6 +1,7 @@
 import {
   AceMode,
   Card,
+  CommunityStatus,
   Player,
   RoomState,
   Suit,
@@ -130,6 +131,8 @@ export function normalizeRoomState(raw: any, fallbackRoomId: string): RoomState 
     foldedCards: Array.isArray(p.foldedCards) ? p.foldedCards : [],
     penaltyPoints: Number(p.penaltyPoints ?? p.penalties ?? 0),
     lossesCount: Number(p.lossesCount ?? 0),
+    consecutiveLosses: Number(p.consecutiveLosses ?? 0),
+    statusRtRw: (p.statusRtRw as CommunityStatus) || 'NONE',
     isConnected: p.isConnected !== false,
   }));
 
@@ -159,6 +162,8 @@ export function normalizeRoomState(raw: any, fallbackRoomId: string): RoomState 
     },
     players,
     scores: raw?.scores,
+    rtRwHolderId: String(raw?.rtRwHolderId || ''),
+    rtRwStatus: (raw?.rtRwStatus as CommunityStatus) || 'NONE',
   };
 }
 
