@@ -3,20 +3,20 @@ import {
   ArrowLeft,
   Copy,
   Check,
-  Star,
-  CheckCircle2,
   Bot,
   Hourglass,
-  PlayCircle,
-  SlidersHorizontal,
   LogOut,
-  UserPlus,
+  Users,
+  Lock,
+  Zap,
+  BookOpen,
+  Volume2,
+  VolumeX,
+  Play,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useGameStore, getInitials } from '../store/useGameStore';
 import { AppShell } from '../components/layout/AppShell';
-import { BrutalButton } from '../components/ui/BrutalButton';
-import { BrutalBadge } from '../components/ui/BrutalBadge';
 import { BrutalToast } from '../components/ui/BrutalToast';
 
 export interface WaitingRoomScreenProps {
@@ -35,19 +35,98 @@ interface HumanSeatData {
   isBot?: boolean;
 }
 
+interface BotSeatItemProps {
+  name: string;
+}
+
+const BotSeatItem: React.FC<BotSeatItemProps> = ({ name }) => (
+  <div className="w-full bg-[#E1E7FF] rounded-xl border-[2.5px] border-black shadow-[3px_3px_0px_#000000] p-3 flex items-center justify-between gap-3 select-none">
+    <div className="flex items-center gap-3 min-w-0">
+      <div className="w-12 h-12 rounded-lg bg-[#283044] text-[#ffd000] border-2 border-black flex items-center justify-center font-display font-black shadow-[2px_2px_0px_#000000] shrink-0">
+        <Bot className="w-6 h-6 text-[#ffd000]" aria-hidden="true" />
+      </div>
+      <div className="flex flex-col min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-display font-black text-base text-black truncate">{name}</span>
+          <span className="px-1.5 py-0.5 bg-[#283044] text-[#ffd000] text-[10px] font-display font-black border border-black rounded shadow-[1px_1px_0px_#000000]">
+            BOT
+          </span>
+        </div>
+      </div>
+    </div>
+    <div className="px-2.5 py-1.5 bg-[#283044] text-white font-display font-black text-xs uppercase rounded-lg border-2 border-black shrink-0 flex items-center gap-1 shadow-[1px_1px_0px_#000000]">
+      <Zap className="w-3.5 h-3.5 text-[#10b981] fill-[#10b981]" aria-hidden="true" />
+      <span>AUTO SIAP</span>
+    </div>
+  </div>
+);
+
+interface HumanPlayerSeatItemProps {
+  player: HumanSeatData;
+  isCurrentUser: boolean;
+  onToggleReady: () => void;
+}
+
+const HumanPlayerSeatItem: React.FC<HumanPlayerSeatItemProps> = ({
+  player,
+  isCurrentUser,
+  onToggleReady,
+}) => {
+  return (
+    <div className="w-full bg-white rounded-xl border-[3px] border-black shadow-[3px_3px_0px_#000000] p-3 flex items-center justify-between gap-3 select-none">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-12 h-12 rounded-lg bg-[#dae2fc] text-black border-2 border-black flex items-center justify-center font-display font-black text-lg shadow-[2px_2px_0px_#000000] shrink-0">
+          {player.initials || getInitials(player.name)}
+        </div>
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-display font-black text-base text-black truncate max-w-[130px]">
+              {player.name}
+            </span>
+            {isCurrentUser && (
+              <span className="px-1.5 py-0.5 bg-white text-black text-[10px] font-display font-black border border-black rounded shadow-[1px_1px_0px_#000000]">
+                ANDA
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {player.isReady ? (
+        <div className="px-3 py-1.5 bg-[#10b981] text-black font-display font-black text-xs uppercase rounded-lg border-2 border-black shadow-[2px_2px_0px_#000000] shrink-0 flex items-center gap-1">
+          <Check className="w-4 h-4 stroke-[3]" aria-hidden="true" />
+          <span>SIAP</span>
+        </div>
+      ) : isCurrentUser ? (
+        <button
+          type="button"
+          onClick={onToggleReady}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#FFE600] border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none text-xs font-display font-black uppercase tracking-wide text-black cursor-pointer hover:bg-[#ffe033] animate-pulse"
+        >
+          <Check className="w-4 h-4 text-black stroke-[3]" aria-hidden="true" />
+          <span>TEKAN SIAP</span>
+        </button>
+      ) : (
+        <div className="px-2.5 py-1.5 bg-[#ffd000] text-black font-display font-black text-xs uppercase rounded-lg border-2 border-black shadow-[2px_2px_0px_#000000] shrink-0 flex items-center gap-1">
+          <Hourglass className="w-3.5 h-3.5 text-black" aria-hidden="true" />
+          <span>BELUM SIAP</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 /**
- * Screen 2: Online Waiting Room Screen (Ruang Tunggu Neo-Brutalism)
- * Strictly adheres to PRD Bab 6 Layar 2 and Google Stitch Screen 5aef7e8c4063466f817324d9e13b2615:
- * (1) Fixed Header h-16 bg-[#F4F0EA] border-b-[2.5px] border-black dengan tombol kembali w-11 h-11 dan judul 'Ruang Tunggu'.
- * (2) Kartu Kode Room: bg-white border-[3px] border-black rounded-xl p-4, 'KODE ROOM: XXXXXX', tombol kuning 'SALIN' -> 'TERSALIN' + toast.
- * (3) Daftar 4 Kursi:
- *     - Slot 1: Host (card putih solid border-[3px] border-black, avatar inisial w-[50px] h-[50px], badge kuning HOST, chip hijau SIAP).
- *     - Slot 2: Tamu Manusia (card putih solid border-[3px] border-black, chip hijau SIAP atau tombol TEKAN SIAP).
- *     - Slot 3 & 4: Kursi cadangan bot (card krem bg-[#F4F0EA] border-[3px] border-dashed border-black, icon robot, label Kursi 3/4, badge hitam BOT HARD, chip Menunggu).
- * (4) Dock Bawah:
- *     - Tombol utama hijau 'MULAI PERMAINAN (N PEMAIN SIAP)' (hanya aktif bagi Host jika >= 2 pemain manusia siap).
- *     - Tombol 'ATUR BOT: HARD' (terkunci, memunculkan toast keterangan).
- *     - Tombol 'KELUAR RUANGAN' (teks merah #FF4D4D).
+ * Screen 2: Online Waiting Room Screen (Ruang Tunggu MABAR Neo-Brutalism)
+ * Strictly adheres to PRD Bab 6 Layar 2 and Google Stitch Screen 638b19f4934b477eac3810011a1061b4:
+ * (1) Fixed Header h-16 bg-[#10b981] border-b-[2.5px] border-black dengan tombol kembali dan Audio Toggle.
+ * (2) Banner Kode Room: Banner kuning (#ffd000) dengan nested white box berisi ROOM ID, #kode, dan tombol SALIN.
+ * (3) Bar Telemetri 2-Kolom: '{readyHumanCount}/{humanCount} PEMAIN SIAP' dan '🔒 BOT: HARD'.
+ * (4) Daftar 4 Kursi:
+ *     - Slot 1: Host manusia (Sekop07, badge HOST, chip SIAP).
+ *     - Slot 2: Tamu manusia / Bot Agresif9.
+ *     - Slot 3 & 4: Slot bot bernama taktis (Cermat8, Taktik7) dengan badge BOT dan AUTO SIAP.
+ * (5) Footer: Tombol utama 'MULAI PERMAINAN' / 'MENUNGGU SEMUA SIAP', serta baris sekunder tombol 'ATURAN' dan 'BUBARKAN MEJA' / 'KELUAR'.
  */
 export const WaitingRoomScreen: React.FC<WaitingRoomScreenProps> = ({
   onToggleReady,
@@ -61,6 +140,9 @@ export const WaitingRoomScreen: React.FC<WaitingRoomScreenProps> = ({
     roomCodeInput,
     showToast,
     toast,
+    setModal,
+    audioEnabled,
+    toggleAudio,
   } = useGameStore();
 
   const [isCopied, setIsCopied] = useState(false);
@@ -76,7 +158,7 @@ export const WaitingRoomScreen: React.FC<WaitingRoomScreenProps> = ({
   const rawPlayers = roomState?.players || [];
   const humanPlayers = rawPlayers.filter((p) => !p.isBot);
 
-  // Fallback demo players matching Stitch Screen 5aef7e8c4063466f817324d9e13b2615
+  // Fallback demo players matching Stitch Screen 638b19f4934b477eac3810011a1061b4
   const isDefaultPreview = humanPlayers.length === 0;
 
   // Resolve Host (Slot 1)
@@ -95,11 +177,11 @@ export const WaitingRoomScreen: React.FC<WaitingRoomScreenProps> = ({
   // Resolve Guest (Slot 2)
   const guestPlayer: HumanSeatData | null = isDefaultPreview
     ? {
-        id: 'guest_elena',
-        name: 'Elena_F',
-        initials: 'EF',
+        id: 'guest_wajik',
+        name: 'Wajik99',
+        initials: 'W9',
         isHost: false,
-        isReady: true,
+        isReady: false,
       }
     : (humanPlayers.find((p) => p.id !== hostPlayer.id) || null);
 
@@ -132,7 +214,7 @@ export const WaitingRoomScreen: React.FC<WaitingRoomScreenProps> = ({
       // Fallback if clipboard API is restricted
     }
     setIsCopied(true);
-    showToast('📋', `Kode ${displayRoomCode} disalin ke papan klip!`);
+    showToast('📋', `Kode #${displayRoomCode} disalin ke papan klip!`);
     setTimeout(() => {
       setIsCopied(false);
     }, 2000);
@@ -157,201 +239,135 @@ export const WaitingRoomScreen: React.FC<WaitingRoomScreenProps> = ({
 
   return (
     <AppShell variant="cream">
-      {/* (1) Fixed Top Bar Header */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-[#F4F0EA] border-b-[2.5px] border-black pt-safe">
-        <div className="w-full max-w-md mx-auto h-16 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      {/* (1) Fixed Header Mint Green */}
+      <header className="fixed top-0 inset-x-0 z-40 bg-[#10b981] border-b-[2.5px] border-black pt-safe">
+        <div className="h-16 max-w-md mx-auto px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
-              aria-label="Kembali"
+              aria-label="Kembali ke Menu"
               onClick={onLeaveRoom}
-              className="w-11 h-11 flex items-center justify-center rounded-lg bg-white border-[2.5px] border-black shadow-[3.5px_3.5px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] text-black transition-all cursor-pointer"
+              className="w-11 h-11 bg-white text-black flex items-center justify-center rounded-lg shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all border-2 border-black cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5 text-black stroke-[2.5]" aria-hidden="true" />
             </button>
-            <h1 className="font-display font-black text-2xl tracking-tight text-black select-none">
-              Ruang Tunggu
+            <h1 className="font-display font-black text-xl uppercase tracking-wide text-black truncate select-none">
+              RUANG TUNGGU
             </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Pengaturan Suara"
+              onClick={toggleAudio}
+              className="w-11 h-11 bg-white text-black flex items-center justify-center rounded-lg shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all border-2 border-black cursor-pointer"
+              title={audioEnabled ? 'Matikan Suara' : 'Aktifkan Suara'}
+            >
+              {audioEnabled ? (
+                <Volume2 className="w-5 h-5 text-black stroke-2" aria-hidden="true" />
+              ) : (
+                <VolumeX className="w-5 h-5 text-black stroke-2" aria-hidden="true" />
+              )}
+            </button>
           </div>
         </div>
       </header>
 
       {/* Main Content Area */}
       <main className="flex flex-col relative w-full pt-20 pb-8 px-4 flex-grow max-w-md mx-auto">
-        <div className="flex flex-col w-full gap-5">
-          {/* (2) Neo-Brutalism Room Code Card */}
-          <section className="relative w-full rounded-xl bg-white border-[3px] border-black p-4 shadow-[3.5px_3.5px_0px_#000000] overflow-hidden select-none">
-            <div className="flex items-center justify-between gap-3 relative z-10">
-              <div className="flex flex-col min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-black uppercase tracking-wider text-[#6E6B65]">
-                    Kode Room:
-                  </span>
-                  <span
-                    id="roomCodeText"
-                    className="text-2xl font-black text-black tracking-widest font-mono"
-                  >
-                    {displayRoomCode}
-                  </span>
-                </div>
+        <div className="flex flex-col w-full gap-4">
+          {/* (2) Room Code Banner */}
+          <section className="w-full bg-[#ffd000] text-black rounded-xl border-[3px] border-black shadow-[4px_4px_0px_#000000] p-4 relative overflow-hidden select-none">
+            <div className="relative z-10 w-full flex items-center justify-between gap-3 bg-white p-3.5 rounded-lg border-[2.5px] border-black shadow-[3px_3px_0px_#000000]">
+              <div className="flex flex-col justify-center min-w-0">
+                <span className="font-display text-[11px] text-black/70 font-bold leading-none mb-1 uppercase tracking-wider">
+                  ROOM ID
+                </span>
+                <span
+                  id="roomCodeText"
+                  className="font-display font-black text-2xl sm:text-3xl tracking-widest text-black select-all leading-none font-mono"
+                >
+                  #{displayRoomCode}
+                </span>
               </div>
-
-              <BrutalButton
-                variant="yellow"
-                size="sm"
+              <button
+                type="button"
+                id="btnCopyCode"
+                aria-label="Salin Kode Meja"
                 onClick={handleCopyRoomCode}
-                leftIcon={
-                  isCopied ? (
-                    <Check className="w-4 h-4 text-black stroke-[3]" aria-hidden="true" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-black stroke-[2.5]" aria-hidden="true" />
-                  )
-                }
-                className="!px-3.5 !py-2 text-xs font-extrabold uppercase tracking-wide shrink-0"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-white text-black font-display font-black text-xs uppercase border-2 border-black rounded-lg shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all hover:bg-[#ffd000] shrink-0 cursor-pointer"
               >
-                {isCopied ? 'Tersalin' : 'Salin'}
-              </BrutalButton>
+                {isCopied ? (
+                  <Check className="w-4 h-4 text-black stroke-[3]" aria-hidden="true" />
+                ) : (
+                  <Copy className="w-4 h-4 text-black stroke-[2.5]" aria-hidden="true" />
+                )}
+                <span>{isCopied ? 'TERSALIN' : 'SALIN'}</span>
+              </button>
             </div>
           </section>
 
-          {/* (3) Player Seats Table Overview (4 Slots) */}
-          <section className="flex flex-col gap-3">
-            {/* Section Heading */}
-            <div className="flex items-center justify-between px-1 select-none">
-              <div className="flex items-center gap-2">
-                <span className="font-display font-black text-lg text-black">
-                  Pemain
-                </span>
-                <span className="text-xs font-bold text-black/60 bg-black/5 px-2 py-0.5 rounded border border-black/20">
-                  {humanPlayersCount}/4
-                </span>
-              </div>
-              <span className="text-xs font-semibold text-[#6E6B65]">
-                Membutuhkan min. 2 pemain
+          {/* (3) 2-Column Telemetry Bar */}
+          <div className="w-full flex items-center justify-between gap-2.5 select-none">
+            {/* Readiness Badge */}
+            <div className="flex-1 bg-white border-[2.5px] border-black rounded-xl p-2.5 shadow-[3px_3px_0px_#000000] flex items-center gap-2">
+              <Users className="w-5 h-5 text-[#10b981] stroke-[2.5]" aria-hidden="true" />
+              <span className="font-display font-black text-xs sm:text-sm text-black truncate uppercase tracking-wide">
+                {readyHumanCount}/{humanPlayersCount} PEMAIN SIAP
               </span>
             </div>
 
-            {/* Slot 1: Host Seat */}
-            <div className="relative w-full rounded-xl bg-white border-[3px] border-black p-3.5 flex items-center justify-between shadow-[2px_2px_0px_#000000] transition-all select-none">
-              <div className="flex items-center gap-3.5 min-w-0">
-                {/* Avatar Ring with Host Star Badge */}
-                <div className="relative flex-shrink-0">
-                  <div className="w-[50px] h-[50px] rounded-full bg-[#FFE600] border-2 border-black flex items-center justify-center font-display font-black text-xl text-black select-none">
-                    {hostPlayer.initials || getInitials(hostPlayer.name)}
-                  </div>
-                  <div
-                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#FFE600] border border-black flex items-center justify-center"
-                    title="Room Host"
-                  >
-                    <Star className="w-3 h-3 text-black fill-black" aria-hidden="true" />
-                  </div>
-                </div>
+            {/* Tactical Bot Mode Badge */}
+            <div
+              onClick={handleBotDifficultyClick}
+              className="bg-[#283044] text-white border-[2.5px] border-black rounded-xl p-2.5 shadow-[3px_3px_0px_#000000] flex items-center gap-2 cursor-pointer active:translate-x-0.5 active:translate-y-0.5"
+              title="Tingkat Kesulitan Bot Terkunci Hard"
+            >
+              <Bot className="w-5 h-5 text-[#ffd000]" aria-hidden="true" />
+              <span className="font-display font-black text-xs sm:text-sm text-[#ffd000] flex items-center gap-1 uppercase tracking-wide">
+                <Lock className="w-3.5 h-3.5 text-[#ffd000] stroke-[2.5]" aria-hidden="true" />
+                BOT: HARD
+              </span>
+            </div>
+          </div>
 
-                {/* Host Info */}
+          {/* (4) 4 Player Seats List */}
+          <section className="flex flex-col gap-3">
+            {/* Slot 1: Host Seat */}
+            <div className="w-full bg-white rounded-xl border-[3px] border-black shadow-[3px_3px_0px_#000000] p-3 flex items-center justify-between gap-3 select-none">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-lg bg-[#ffd000] text-black border-2 border-black flex items-center justify-center font-display font-black text-lg shadow-[2px_2px_0px_#000000] shrink-0">
+                  {hostPlayer.initials || getInitials(hostPlayer.name)}
+                </div>
                 <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-black text-base text-black truncate max-w-[130px]">
-                      {hostPlayer.name}
+                    <span className="font-display font-black text-base text-black truncate max-w-[130px]">
+                      {hostPlayer.name} {isCurrentUserHost ? '(Anda)' : ''}
                     </span>
-                    <BrutalBadge variant="yellow">HOST</BrutalBadge>
-                    {hostPlayer.id === playerId && (
-                      <span className="text-[10px] font-bold text-[#6E6B65] uppercase">
-                        (Anda)
-                      </span>
-                    )}
+                    <span className="px-1.5 py-0.5 bg-[#ffd000] text-black text-[10px] font-display font-black border-[1.5px] border-black rounded shadow-[1px_1px_0px_#000000]">
+                      HOST
+                    </span>
                   </div>
                 </div>
               </div>
-
-              {/* Host Status Chip: Always Ready */}
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#4EDE93] border-2 border-black flex-shrink-0 text-black shadow-[1px_1px_0px_#000000]">
-                <CheckCircle2 className="w-4 h-4 text-black stroke-[2.5]" aria-hidden="true" />
-                <span className="text-xs font-black uppercase tracking-wide">
-                  Siap
-                </span>
+              <div className="px-3 py-1.5 bg-[#10b981] text-black font-display font-black text-xs uppercase rounded-lg border-2 border-black shadow-[2px_2px_0px_#000000] shrink-0 flex items-center gap-1">
+                <Check className="w-4 h-4 stroke-[3]" aria-hidden="true" />
+                <span>SIAP</span>
               </div>
             </div>
 
-            {/* Slot 2: Connected Human Guest */}
-            {guestPlayer ? (
-              <div className="relative w-full rounded-xl bg-white border-[3px] border-black p-3.5 flex items-center justify-between shadow-[2px_2px_0px_#000000] transition-all select-none">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  {/* Guest Avatar */}
-                  <div className="relative flex-shrink-0">
-                    <div className="w-[50px] h-[50px] rounded-full bg-[#4EDE93] border-2 border-black flex items-center justify-center font-display font-black text-lg text-black select-none">
-                      {guestPlayer.initials || getInitials(guestPlayer.name)}
-                    </div>
-                    <div
-                      className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-[#4EDE93] border-2 border-black"
-                      title="Online"
-                    />
-                  </div>
-
-                  {/* Guest Info */}
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-base text-black truncate max-w-[130px]">
-                        {guestPlayer.name}
-                      </span>
-                      {guestPlayer.id === playerId && (
-                        <BrutalBadge variant="white">ANDA</BrutalBadge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Guest Ready State: Chip or 'Tekan Siap' Button */}
-                {guestPlayer.isReady ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#4EDE93] border-2 border-black flex-shrink-0 text-black shadow-[1px_1px_0px_#000000]">
-                    <CheckCircle2 className="w-4 h-4 text-black stroke-[2.5]" aria-hidden="true" />
-                    <span className="text-xs font-black uppercase tracking-wide">
-                      Siap
-                    </span>
-                  </div>
-                ) : guestPlayer.id === playerId ? (
-                  <button
-                    type="button"
-                    onClick={onToggleReady}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#FFE600] border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none text-xs font-black uppercase tracking-wide text-black cursor-pointer hover:bg-[#ffe033] animate-pulse"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-black stroke-[2.5]" aria-hidden="true" />
-                    <span>Tekan Siap</span>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border-2 border-black flex-shrink-0 text-black">
-                    <Hourglass className="w-3.5 h-3.5 text-black" aria-hidden="true" />
-                    <span className="text-[11px] font-bold uppercase text-black">
-                      Menunggu
-                    </span>
-                  </div>
-                )}
-              </div>
+            {/* Slot 2: Tamu / Bot Agresif9 */}
+            {guestPlayer && !guestPlayer.isBot ? (
+              <HumanPlayerSeatItem
+                player={guestPlayer}
+                isCurrentUser={guestPlayer.id === playerId}
+                onToggleReady={onToggleReady}
+              />
             ) : (
-              /* Waiting for Guest Slot 2 */
-              <div className="relative w-full rounded-xl bg-[#F4F0EA] border-[3px] border-dashed border-black p-3.5 flex items-center justify-between select-none">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-[50px] h-[50px] rounded-full bg-white border-2 border-black flex items-center justify-center text-black flex-shrink-0 shadow-sm">
-                    <UserPlus className="w-5 h-5 text-black" aria-hidden="true" />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-base text-black">Kursi 2</span>
-                      <span className="px-1.5 py-0.5 rounded bg-[#FFE600] border border-black text-black text-[10px] font-black uppercase tracking-wider">
-                        MENUNGGU TAMU
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border-2 border-black flex-shrink-0 text-black">
-                  <Hourglass className="w-3.5 h-3.5 text-black animate-spin" aria-hidden="true" />
-                  <span className="text-[11px] font-bold uppercase text-black">
-                    Menunggu
-                  </span>
-                </div>
-              </div>
+              <BotSeatItem name={guestPlayer?.name || 'Agresif9'} />
             )}
 
-            {/* Slot 3: Kursi 3 (Empty Seat / Bot Hard Reserve) */}
+            {/* Slot 3: Tamu 2 / Bot Cermat8 */}
             {slot3Player && !slot3Player.isBot ? (
               <HumanPlayerSeatItem
                 player={slot3Player}
@@ -359,30 +375,10 @@ export const WaitingRoomScreen: React.FC<WaitingRoomScreenProps> = ({
                 onToggleReady={onToggleReady}
               />
             ) : (
-              <div className="relative w-full rounded-xl bg-[#F4F0EA] border-[3px] border-dashed border-black p-3.5 flex items-center justify-between select-none">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-[50px] h-[50px] rounded-full bg-white border-2 border-black flex items-center justify-center text-black flex-shrink-0 shadow-sm">
-                    <Bot className="w-6 h-6 text-black" aria-hidden="true" />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-base text-black">Kursi 3</span>
-                      <span className="px-1.5 py-0.5 rounded bg-black text-white text-[10px] font-black uppercase tracking-wider">
-                        BOT HARD
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border-2 border-black flex-shrink-0 text-black">
-                  <Hourglass className="w-3.5 h-3.5 text-black" aria-hidden="true" />
-                  <span className="text-[11px] font-bold uppercase text-black">
-                    Menunggu
-                  </span>
-                </div>
-              </div>
+              <BotSeatItem name={slot3Player?.name || rawPlayers.find((p) => p.isBot)?.name || 'Cermat8'} />
             )}
 
-            {/* Slot 4: Kursi 4 (Empty Seat / Bot Hard Reserve) */}
+            {/* Slot 4: Tamu 3 / Bot Taktik7 */}
             {slot4Player && !slot4Player.isBot ? (
               <HumanPlayerSeatItem
                 player={slot4Player}
@@ -390,74 +386,60 @@ export const WaitingRoomScreen: React.FC<WaitingRoomScreenProps> = ({
                 onToggleReady={onToggleReady}
               />
             ) : (
-              <div className="relative w-full rounded-xl bg-[#F4F0EA] border-[3px] border-dashed border-black p-3.5 flex items-center justify-between select-none">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-[50px] h-[50px] rounded-full bg-white border-2 border-black flex items-center justify-center text-black flex-shrink-0 shadow-sm">
-                    <Bot className="w-6 h-6 text-black" aria-hidden="true" />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-base text-black">Kursi 4</span>
-                      <span className="px-1.5 py-0.5 rounded bg-black text-white text-[10px] font-black uppercase tracking-wider">
-                        BOT HARD
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border-2 border-black flex-shrink-0 text-black">
-                  <Hourglass className="w-3.5 h-3.5 text-black" aria-hidden="true" />
-                  <span className="text-[11px] font-bold uppercase text-black">
-                    Menunggu
-                  </span>
-                </div>
-              </div>
+              <BotSeatItem name={slot4Player?.name || rawPlayers.filter((p) => p.isBot)[1]?.name || 'Taktik7'} />
             )}
           </section>
 
-          {/* (4) Bottom Tactical Dock */}
-          <div className="flex flex-col gap-3 mt-4 pt-2">
-            {/* Primary Action Button: MULAI PERMAINAN (N PEMAIN SIAP) */}
+          {/* (5) Area Kontrol & Aksi Footer */}
+          <div className="w-full pt-2 flex flex-col gap-3">
+            {/* Primary Action Button: MULAI PERMAINAN / MENUNGGU SEMUA SIAP */}
             <button
-              id="startGameBtn"
+              id="btnStartMatch"
               type="button"
+              disabled={!canStartMatch}
               aria-disabled={!canStartMatch}
               onClick={handleStartGame}
               className={clsx(
-                'w-full py-4 px-4 rounded-xl border-[3px] border-black font-display font-black text-base flex items-center justify-center gap-2 transition-all select-none',
+                'w-full py-4 px-4 font-display font-black text-base uppercase tracking-wider rounded-xl border-[3px] border-black transition-all flex items-center justify-center gap-2 select-none',
                 canStartMatch
-                  ? 'bg-[#4EDE93] text-black shadow-[5px_5px_0px_#000000] hover:bg-[#3ecb82] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] cursor-pointer'
-                  : 'bg-slate-300 text-slate-600 opacity-60 shadow-none cursor-not-allowed'
+                  ? 'bg-[#10b981] text-black shadow-[4px_4px_0px_#000000] hover:bg-[#00c57c] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none cursor-pointer'
+                  : 'bg-[#eaedff] text-[#64748b] opacity-60 shadow-[2px_2px_0px_#000000] cursor-not-allowed'
               )}
             >
-              <PlayCircle className="w-5 h-5 text-black fill-black shrink-0" aria-hidden="true" />
-              <span className="uppercase tracking-wider">
-                Mulai Permainan ({readyHumanCount} Pemain Siap)
-              </span>
+              {canStartMatch ? (
+                <>
+                  <Play className="w-5 h-5 text-black fill-black" aria-hidden="true" />
+                  <span>MULAI PERMAINAN</span>
+                </>
+              ) : (
+                <>
+                  <Hourglass className="w-5 h-5 text-[#64748b]" aria-hidden="true" />
+                  <span>MENUNGGU SEMUA SIAP</span>
+                </>
+              )}
             </button>
 
-            {/* Secondary Action Controls */}
-            <div className="flex items-center gap-3">
-              {/* Button: ATUR BOT: HARD (Terkunci) */}
-              <BrutalButton
-                variant="white"
-                size="md"
-                onClick={handleBotDifficultyClick}
-                leftIcon={<SlidersHorizontal className="w-4 h-4 text-black shrink-0" aria-hidden="true" />}
-                className="flex-1 !py-3 !px-3 hover:!bg-[#FFE600] font-extrabold text-xs uppercase tracking-wider"
+            {/* Secondary Navigation Actions: ATURAN & BUBARKAN MEJA / KELUAR */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Panduan Aturan 7-an */}
+              <button
+                type="button"
+                onClick={() => setModal('rules')}
+                className="w-full py-2.5 px-2 bg-white text-black font-display font-black text-xs uppercase rounded-lg border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                Atur Bot: Hard
-              </BrutalButton>
+                <BookOpen className="w-4 h-4 text-black" aria-hidden="true" />
+                <span>ATURAN</span>
+              </button>
 
-              {/* Button: KELUAR RUANGAN */}
-              <BrutalButton
-                variant="white"
-                size="md"
+              {/* BUBARKAN MEJA / KELUAR */}
+              <button
+                type="button"
                 onClick={onLeaveRoom}
-                leftIcon={<LogOut className="w-4 h-4 text-[#FF4D4D] shrink-0" aria-hidden="true" />}
-                className="flex-1 !py-3 !px-3 !text-[#FF4D4D] hover:!bg-red-50 font-extrabold text-xs uppercase tracking-wider"
+                className="w-full py-2.5 px-2 bg-[#ffdad6] text-[#93000a] font-display font-black text-xs uppercase rounded-lg border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                Keluar Ruangan
-              </BrutalButton>
+                <LogOut className="w-4 h-4 text-[#93000a]" aria-hidden="true" />
+                <span>{isCurrentUserHost ? 'BUBARKAN MEJA' : 'KELUAR'}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -472,70 +454,6 @@ export const WaitingRoomScreen: React.FC<WaitingRoomScreenProps> = ({
         variant="yellow"
       />
     </AppShell>
-  );
-};
-
-/**
- * Sub-component for rendering Human Seat in Slots 3 or 4 when populated by humans
- */
-interface HumanPlayerSeatItemProps {
-  player: HumanSeatData;
-  isCurrentUser: boolean;
-  onToggleReady: () => void;
-}
-
-const HumanPlayerSeatItem: React.FC<HumanPlayerSeatItemProps> = ({
-  player,
-  isCurrentUser,
-  onToggleReady,
-}) => {
-  return (
-    <div className="relative w-full rounded-xl bg-white border-[3px] border-black p-3.5 flex items-center justify-between shadow-[2px_2px_0px_#000000] transition-all select-none">
-      <div className="flex items-center gap-3.5 min-w-0">
-        <div className="relative flex-shrink-0">
-          <div className="w-[50px] h-[50px] rounded-full bg-[#4EDE93] border-2 border-black flex items-center justify-center font-display font-black text-lg text-black select-none">
-            {player.initials || getInitials(player.name)}
-          </div>
-          <div
-            className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-[#4EDE93] border-2 border-black"
-            title="Online"
-          />
-        </div>
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-black text-base text-black truncate max-w-[130px]">
-              {player.name}
-            </span>
-            {isCurrentUser && <BrutalBadge variant="white">ANDA</BrutalBadge>}
-          </div>
-        </div>
-      </div>
-
-      {player.isReady ? (
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#4EDE93] border-2 border-black flex-shrink-0 text-black shadow-[1px_1px_0px_#000000]">
-          <CheckCircle2 className="w-4 h-4 text-black stroke-[2.5]" aria-hidden="true" />
-          <span className="text-xs font-black uppercase tracking-wide">
-            Siap
-          </span>
-        </div>
-      ) : isCurrentUser ? (
-        <button
-          type="button"
-          onClick={onToggleReady}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#FFE600] border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none text-xs font-black uppercase tracking-wide text-black cursor-pointer hover:bg-[#ffe033] animate-pulse"
-        >
-          <CheckCircle2 className="w-4 h-4 text-black stroke-[2.5]" aria-hidden="true" />
-          <span>Tekan Siap</span>
-        </button>
-      ) : (
-        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border-2 border-black flex-shrink-0 text-black">
-          <Hourglass className="w-3.5 h-3.5 text-black" aria-hidden="true" />
-          <span className="text-[11px] font-bold uppercase text-black">
-            Menunggu
-          </span>
-        </div>
-      )}
-    </div>
   );
 };
 
