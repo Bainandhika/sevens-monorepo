@@ -25,6 +25,21 @@ const (
 
 	// IllegalPassPenalty is applied if a player attempts an illegal pass.
 	IllegalPassPenalty = 30
+
+	// ConsecutiveLossesForRT is the number of 4th-place finishes in a row to earn RT status.
+	ConsecutiveLossesForRT = 3
+
+	// ConsecutiveLossesForRW is the number of 4th-place finishes in a row to earn RW status.
+	ConsecutiveLossesForRW = 6
+)
+
+// CommunityStatus represents the RT/RW badge status of a player or room.
+type CommunityStatus string
+
+const (
+	StatusNone CommunityStatus = "NONE"
+	StatusRT   CommunityStatus = "RT"
+	StatusRW   CommunityStatus = "RW"
 )
 
 // FoldedCardScoreDetail contains the breakdown of penalty points for a single folded card.
@@ -37,27 +52,33 @@ type FoldedCardScoreDetail struct {
 
 // PlayerScoreInput holds the input parameters for calculating final round leaderboard rankings.
 type PlayerScoreInput struct {
-	PlayerID    string `json:"playerId"`
-	PlayerName  string `json:"playerName"`
-	SeatIndex   int    `json:"seatIndex"`
-	FoldedCards []Card `json:"foldedCards"`
+	PlayerID          string          `json:"playerId"`
+	PlayerName        string          `json:"playerName"`
+	SeatIndex         int             `json:"seatIndex"`
+	FoldedCards       []Card          `json:"foldedCards"`
+	LossesCount       int             `json:"lossesCount"`
+	ConsecutiveLosses int             `json:"consecutiveLosses"`
+	StatusRTRW        CommunityStatus `json:"statusRtRw"`
 }
 
 // PlayerScoreDetail contains the breakdown of penalty points and leaderboard standings for a player.
 type PlayerScoreDetail struct {
-	PlayerID       string                  `json:"playerId"`
-	PlayerName     string                  `json:"playerName"`
-	RankPosition   int                     `json:"rankPosition"`
-	FoldedCards    []FoldedCardScoreDetail `json:"foldedCards"`
-	TotalPenalty   int                     `json:"totalPenalty"`
-	IsWinner       bool                    `json:"isWinner"`
-	IsJuruKunci    bool                    `json:"isJuruKunci"`
-	RemainingCards int                     `json:"remainingCards,omitempty"`
-	CardPoints     int                     `json:"cardPoints,omitempty"`
-	AcePenalties   int                     `json:"acePenalties,omitempty"`
-	SevenPenalties int                     `json:"sevenPenalties,omitempty"`
-	OtherPenalties int                     `json:"otherPenalties,omitempty"`
-	TotalMinus     int                     `json:"totalMinus,omitempty"`
+	PlayerID          string                  `json:"playerId"`
+	PlayerName        string                  `json:"playerName"`
+	RankPosition      int                     `json:"rankPosition"`
+	FoldedCards       []FoldedCardScoreDetail `json:"foldedCards"`
+	TotalPenalty      int                     `json:"totalPenalty"`
+	IsWinner          bool                    `json:"isWinner"`
+	IsJuruKunci       bool                    `json:"isJuruKunci"`
+	LossesCount       int                     `json:"lossesCount"`
+	ConsecutiveLosses int                     `json:"consecutiveLosses"`
+	StatusRTRW        CommunityStatus         `json:"statusRtRw"`
+	RemainingCards    int                     `json:"remainingCards,omitempty"`
+	CardPoints        int                     `json:"cardPoints,omitempty"`
+	AcePenalties      int                     `json:"acePenalties,omitempty"`
+	SevenPenalties    int                     `json:"sevenPenalties,omitempty"`
+	OtherPenalties    int                     `json:"otherPenalties,omitempty"`
+	TotalMinus        int                     `json:"totalMinus,omitempty"`
 }
 
 // IsKeyCard checks if a card is rank 6 or rank 8.
@@ -160,6 +181,9 @@ func CalculateFinalLeaderboard(inputs []PlayerScoreInput, aceMode AceMode) map[s
 	})
 
 	results := make(map[string]PlayerScoreDetail, len(ranked))
+	var loserID string
+	var hasLoser bool
+
 	for i := range ranked {
 		ranked[i].detail.RankPosition = i + 1
 		if i == 0 {
@@ -168,7 +192,48 @@ func CalculateFinalLeaderboard(inputs []PlayerScoreInput, aceMode AceMode) map[s
 		if i == len(ranked)-1 && len(ranked) > 1 {
 			ranked[i].detail.IsJuruKunci = true
 		}
+
+		// Pass 1: Normalize status and update losses count and streak
+		status := ranked[i].input.StatusRTRW
+		if status == "" {
+			status = StatusNone
+		}
+		if ranked[i].detail.IsJuruKunci {
+			ranked[i].detail.LossesCount = ranked[i].input.LossesCount + 1
+			ranked[i].detail.ConsecutiveLosses = ranked[i].input.ConsecutiveLosses + 1
+			loserID = ranked[i].detail.PlayerID
+			hasLoser = true
+		} else {
+			ranked[i].detail.LossesCount = ranked[i].input.LossesCount
+			ranked[i].detail.ConsecutiveLosses = 0
+		}
+		ranked[i].detail.StatusRTRW = status
+
 		results[ranked[i].detail.PlayerID] = ranked[i].detail
+	}
+
+	// Pass 2: Evaluate RT/RW promotion or dethroning for the Juru Kunci loser
+	if hasLoser {
+		loser := results[loserID]
+		if loser.ConsecutiveLosses >= ConsecutiveLossesForRW {
+			for id, d := range results {
+				if id != loserID {
+					d.StatusRTRW = StatusNone
+					results[id] = d
+				}
+			}
+			loser.StatusRTRW = StatusRW
+			results[loserID] = loser
+		} else if loser.ConsecutiveLosses >= ConsecutiveLossesForRT {
+			for id, d := range results {
+				if id != loserID {
+					d.StatusRTRW = StatusNone
+					results[id] = d
+				}
+			}
+			loser.StatusRTRW = StatusRT
+			results[loserID] = loser
+		}
 	}
 
 	return results
