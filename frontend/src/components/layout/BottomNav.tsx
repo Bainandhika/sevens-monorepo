@@ -32,12 +32,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       aria-label="Navigasi Bawah Utama"
     >
       <div className="w-full max-w-md mx-auto h-16 px-4 flex items-center justify-around">
-        {/* Tab Lobi Utama */}
+        {/* Tab Menu Utama */}
         <button
           type="button"
           onClick={onSelectLobby}
           aria-current={activeTab === 'lobby' ? 'page' : undefined}
-          aria-label="Tab Lobi Utama"
+          aria-label="Tab Menu Utama"
           className={clsx(
             'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] transition-transform select-none',
             activeTab === 'lobby'
@@ -46,7 +46,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           )}
         >
           <Gamepad2 className="w-5 h-5 mb-0.5 text-current" aria-hidden="true" />
-          <span>Lobi</span>
+          <span>MENU</span>
         </button>
 
         {/* Tab Modal Panduan Aturan */}
