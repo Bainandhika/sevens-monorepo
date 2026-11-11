@@ -95,9 +95,7 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
     return rawId.replace(/^offline_/, '').toUpperCase();
   }, [roomState?.id, roomCodeInput]);
 
-  const displayTurnOrRound = useMemo(() => {
-    return roomState?.turnNumber ?? roomState?.roundNumber ?? 1;
-  }, [roomState?.turnNumber, roomState?.roundNumber]);
+  const roundNumber = roomState?.roundNumber ?? 1;
 
   // Current status As formatted string: 'Belum Terbuka' | 'As Rendah (1)' | 'As Tinggi (15)'
   const aceStatusText = useMemo(() => {
@@ -240,14 +238,14 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
         className="relative w-full h-full max-h-screen flex flex-col justify-between overflow-hidden select-none"
       >
         {/* =========================================================================
-         * (1) TopHeader: Menu Burger, Judul 7-an, Kode Meja, Putaran, Status As, Info
+         * (1) TopHeader: Menu Burger, Judul 7-an, Kode Meja, Ronde, Status As
          * ========================================================================= */}
         <header
           role="banner"
           aria-label="Header Meja Permainan"
-          className="w-full py-2 px-3 bg-[#F5F0EA] border-b-[3px] border-black flex items-center justify-between z-30 shrink-0 select-none shadow-[0px_2px_0px_#000000]"
+          className="w-full py-2 px-3 bg-white border-b-[2.5px] border-black flex items-center justify-between z-30 shrink-0 select-none shadow-[0px_2px_0px_#000000]"
         >
-          {/* Sisi Kiri: Tombol Burger + Judul 7-an + Kode Room + Putaran */}
+          {/* Sisi Kiri: Tombol Burger + Judul 7-an + Kode Room + Ronde */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -283,9 +281,9 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
                   #{displayRoomCode}
                 </span>
               </div>
-              <p className="text-[10px] text-black/70 font-extrabold uppercase tracking-wider leading-none mt-0.5 font-display">
-                PUTARAN {displayTurnOrRound}
-              </p>
+              <span className="text-[10px] text-neutral-600 font-extrabold uppercase tracking-wider leading-none mt-0.5 font-display">
+                RONDE {roundNumber}
+              </span>
             </div>
           </div>
 
@@ -300,31 +298,8 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
             </span>
           </div>
 
-          {/* Sisi Kanan: Tombol Ulang / Info Aturan w-8 h-8 */}
-          <div className="flex items-center">
-            <button
-              type="button"
-              aria-label="Aturan Permainan"
-              title="Aturan Permainan & Panduan Taktis"
-              onClick={() => setModal('rules')}
-              className="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 border-2 border-black flex items-center justify-center text-black active:translate-x-0.5 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_#000000] group cursor-pointer focus:outline-none"
-            >
-              <svg
-                className="w-4 h-4 transition-transform duration-500 group-hover:rotate-180"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.03 8.03 0 01-15.357-2m15.357 2H15"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
+          {/* Sisi Kanan: Spacer Penyeimbang */}
+          <div className="w-8" aria-hidden="true" />
         </header>
 
         {/* =========================================================================
