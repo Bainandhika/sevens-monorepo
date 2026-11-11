@@ -201,6 +201,6 @@ func main() {
 	<-make(chan struct{})
 }
 
-// Skipped: Compiling game.wasm binary to frontend/public/game.wasm (out of scope for step 6).
+// Compiled target: frontend/public/game.wasm via GOOS=js GOARCH=wasm.
 // Risk: Client must pass valid JSON strings to Wasm bridge functions to avoid parse fallbacks.
 
