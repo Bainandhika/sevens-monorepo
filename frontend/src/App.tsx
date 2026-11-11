@@ -10,6 +10,7 @@ import { WaitingRoomScreen } from './pages/WaitingRoomScreen';
 import { GameplayScreen } from './pages/GameplayScreen';
 import { ScoreboardScreen } from './pages/ScoreboardScreen';
 import { RulesModal } from './components/modals/RulesModal';
+import { SettingsModal } from './components/modals/SettingsModal';
 import { ColdStartModal } from './components/modals/ColdStartModal';
 import { BrutalToast } from './components/ui/BrutalToast';
 import { Card } from './types/game';
@@ -320,6 +321,12 @@ export const App: React.FC<AppRootProps> = () => {
       {/* Global Rules Modal accessible from any screen */}
       <RulesModal
         isOpen={activeModal === 'rules'}
+        onClose={() => setModal('none')}
+      />
+
+      {/* Game Settings Modal */}
+      <SettingsModal
+        isOpen={activeModal === 'settings'}
         onClose={() => setModal('none')}
       />
 
