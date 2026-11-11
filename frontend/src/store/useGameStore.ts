@@ -4,10 +4,11 @@ import {
   BoardState,
   BotDifficulty,
   Card,
+  ModalType,
   Player,
   PlayerScoreDetail,
   RoomState,
-  ScreenRoute,
+  ScreenName,
   ServerHealthStatus,
   Suit,
 } from '../types/game';
@@ -23,12 +24,46 @@ import {
   calculateCardPenalty,
   isKeyCard,
 } from '../constants/designTokens';
+import { evaluateRTRWAfterRound } from '../services/mockDataService';
+
+/**
+ * LocalStorage settings persistence schema for Tujuhan Tactical
+ */
+const SETTINGS_STORAGE_KEY = 'sevens_settings_v1';
+
+function getInitialSettings(): { audioEnabled: boolean; doubleTapEnabled: boolean } {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const stored = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return {
+          audioEnabled: typeof parsed.audioEnabled === 'boolean' ? parsed.audioEnabled : true,
+          doubleTapEnabled: typeof parsed.doubleTapEnabled === 'boolean' ? parsed.doubleTapEnabled : true,
+        };
+      }
+    }
+  } catch {
+    // Ignore storage errors in restricted contexts
+  }
+  return { audioEnabled: true, doubleTapEnabled: true };
+}
+
+function persistSettings(settings: { audioEnabled: boolean; doubleTapEnabled: boolean }) {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    }
+  } catch {
+    // Ignore storage errors in restricted contexts
+  }
+}
 
 /**
  * Interface for central Zustand Game Store state and actions
  */
 export interface GameStoreState {
-  currentScreen: ScreenRoute;
+  currentScreen: ScreenName;
   playerId: string;
   sessionToken: string;
   playerName: string;
@@ -41,24 +76,30 @@ export interface GameStoreState {
   roomState: RoomState | null;
   validMoves: Card[];
   selectedCard: Card | null;
-  activeModal: 'none' | 'rules' | 'key_warning' | 'cold_start' | 'rematch';
+  activeModal: ModalType;
   isDrawerOpen: boolean;
   pendingFoldCard: Card | null;
   toast: { visible: boolean; icon: string; message: string };
-  setScreen: (screen: ScreenRoute) => void;
+  audioEnabled: boolean;
+  doubleTapEnabled: boolean;
+  setScreen: (screen: ScreenName) => void;
   setPlayerName: (name: string) => void;
   randomizePlayerName: () => void;
   setOfflineDifficulty: (diff: BotDifficulty) => void;
   setRoomCodeInput: (code: string) => void;
   showToast: (icon: string, message: string) => void;
-  setModal: (modal: GameStoreState['activeModal']) => void;
+  setModal: (modal: ModalType) => void;
   setDrawerOpen: (open: boolean) => void;
   selectCard: (card: Card | null) => void;
   startOfflineGame: () => void;
   playSelectedCard: (card?: Card) => void;
   attemptFoldCard: (card?: Card) => void;
   confirmFoldKeyCard: () => void;
+  triggerRematch: () => void;
+  confirmRematch: () => void;
   startRematch: () => void;
+  toggleAudio: () => void;
+  toggleDoubleTap: () => void;
   leaveToLobby: () => void;
   syncServerRoomState: (state: RoomState) => void;
   getAceStatusLabel: () => string;
@@ -297,7 +338,8 @@ function getNextTurnPlayer(players: Player[], currentIndex: number): Player | nu
 
 /**
  * Finalizes round, calculates penalty points, determines winner & juru kunci,
- * updates cumulative losses count, and navigates to scoreboard
+ * updates cumulative losses count and RT/RW community state via evaluateRTRWAfterRound,
+ * and navigates to scoreboard
  */
 function finalizeRound(
   players: Player[],
@@ -322,31 +364,31 @@ function finalizeRound(
   playerScoresWithTotals.sort((a, b) => a.totalPenalty - b.totalPenalty);
 
   const scoreMap: Record<string, PlayerScoreDetail> = {};
-  const updatedPlayers = players.map((p) => {
-    const rankIndex = playerScoresWithTotals.findIndex(
-      (entry) => entry.player.id === p.id
-    );
+  playerScoresWithTotals.forEach((entry, rankIndex) => {
     const rankPosition = (rankIndex + 1) as 1 | 2 | 3 | 4;
-    const entry = playerScoresWithTotals[rankIndex];
     const isWinner = rankPosition === 1;
     const isJuruKunci = rankPosition === 4;
 
-    scoreMap[p.id] = {
-      playerId: p.id,
-      playerName: p.name,
+    scoreMap[entry.player.id] = {
+      playerId: entry.player.id,
+      playerName: entry.player.name,
       rankPosition,
       foldedCards: entry.foldedDetails,
       totalPenalty: entry.totalPenalty,
+      lossesCount: entry.player.lossesCount ?? 0,
+      consecutiveLosses: entry.player.consecutiveLosses ?? 0,
+      statusRtRw: entry.player.statusRtRw ?? 'NONE',
       isWinner,
       isJuruKunci,
     };
-
-    return {
-      ...p,
-      penaltyPoints: entry.totalPenalty,
-      lossesCount: isJuruKunci ? (p.lossesCount || 0) + 1 : (p.lossesCount || 0),
-    };
   });
+
+  const {
+    players: updatedPlayers,
+    scoreboard: updatedScores,
+    rtRwHolderId,
+    rtRwStatus,
+  } = evaluateRTRWAfterRound(players, scoreMap);
 
   set((prev) => ({
     roomState: prev.roomState
@@ -356,7 +398,9 @@ function finalizeRound(
           board,
           aceMode,
           players: updatedPlayers,
-          scores: scoreMap,
+          scores: updatedScores,
+          rtRwHolderId,
+          rtRwStatus,
         }
       : null,
     validMoves: [],
@@ -442,6 +486,7 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
   const initialGuestName = DICE_NICKNAME_PRESETS[0];
   const initialPlayerId = `guest_${Math.random().toString(36).substring(2, 9)}`;
   const initialSessionToken = `sess_${Math.random().toString(36).substring(2, 12)}_${Date.now()}`;
+  const initialSettings = getInitialSettings();
 
   return {
     currentScreen: 'lobby',
@@ -465,8 +510,26 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
       icon: '',
       message: '',
     },
+    audioEnabled: initialSettings.audioEnabled,
+    doubleTapEnabled: initialSettings.doubleTapEnabled,
 
-    setScreen: (screen: ScreenRoute) => set({ currentScreen: screen }),
+    toggleAudio: () => {
+      set((state) => {
+        const nextVal = !state.audioEnabled;
+        persistSettings({ audioEnabled: nextVal, doubleTapEnabled: state.doubleTapEnabled });
+        return { audioEnabled: nextVal };
+      });
+    },
+
+    toggleDoubleTap: () => {
+      set((state) => {
+        const nextVal = !state.doubleTapEnabled;
+        persistSettings({ audioEnabled: state.audioEnabled, doubleTapEnabled: nextVal });
+        return { doubleTapEnabled: nextVal };
+      });
+    },
+
+    setScreen: (screen: ScreenName) => set({ currentScreen: screen }),
 
     setPlayerName: (name: string) => {
       const sanitized = name.slice(0, MAX_NICKNAME_LENGTH);
@@ -570,13 +633,15 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         foldedCards: [],
         penaltyPoints: 0,
         lossesCount: 0,
+        consecutiveLosses: 0,
+        statusRtRw: 'NONE',
         isConnected: true,
       };
 
       const bot1: Player = {
         id: 'bot_1',
-        name: 'Bot Taktis',
-        initials: 'BT',
+        name: 'Taktik7',
+        initials: 'T7',
         avatarColor: AVATAR_COLORS[1],
         isBot: true,
         botLevel: offlineDifficulty,
@@ -585,13 +650,15 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         foldedCards: [],
         penaltyPoints: 0,
         lossesCount: 0,
+        consecutiveLosses: 0,
+        statusRtRw: 'NONE',
         isConnected: true,
       };
 
       const bot2: Player = {
         id: 'bot_2',
-        name: 'Bot Cermat',
-        initials: 'BC',
+        name: 'Cermat8',
+        initials: 'C8',
         avatarColor: AVATAR_COLORS[2],
         isBot: true,
         botLevel: offlineDifficulty,
@@ -600,13 +667,15 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         foldedCards: [],
         penaltyPoints: 0,
         lossesCount: 0,
+        consecutiveLosses: 0,
+        statusRtRw: 'NONE',
         isConnected: true,
       };
 
       const bot3: Player = {
         id: 'bot_3',
-        name: 'Bot Agresif',
-        initials: 'BA',
+        name: 'Agresif9',
+        initials: 'A9',
         avatarColor: AVATAR_COLORS[3],
         isBot: true,
         botLevel: offlineDifficulty,
@@ -615,6 +684,8 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         foldedCards: [],
         penaltyPoints: 0,
         lossesCount: 0,
+        consecutiveLosses: 0,
+        statusRtRw: 'NONE',
         isConnected: true,
       };
 
@@ -684,6 +755,8 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         openerSuit,
         board: initialBoard,
         players,
+        rtRwHolderId: '',
+        rtRwStatus: 'NONE',
       };
 
       set({
@@ -848,17 +921,27 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
       state.showToast('🛡️', 'Kartu Kunci ditutup (+30 Poin Denda)!');
     },
 
-    startRematch: () => {
+    triggerRematch: () => {
+      set({
+        currentScreen: 'shuffling',
+        activeModal: 'none',
+      });
+    },
+
+    confirmRematch: () => {
       const state = get();
       const { roomState, playerId } = state;
       if (!roomState) return;
 
-      // Retain cumulative lossesCount across rematch
+      // Retain cumulative lossesCount, consecutiveLosses, and statusRtRw across rematch
       const existingPlayers = roomState.players.map((p) => ({
         ...p,
         hand: [] as Card[],
         foldedCards: [] as Card[],
         penaltyPoints: 0,
+        lossesCount: p.lossesCount ?? 0,
+        consecutiveLosses: p.consecutiveLosses ?? 0,
+        statusRtRw: p.statusRtRw ?? 'NONE',
         isReady: true,
       }));
 
@@ -928,7 +1011,7 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         roomState: {
           ...roomState,
           status: 'playing',
-          roundNumber: roomState.roundNumber + 1,
+          roundNumber: (roomState.roundNumber || 1) + 1,
           turnNumber: 1,
           currentTurn: nextTurnPlayer.id,
           aceMode: 'LOCKED_NONE',
@@ -936,6 +1019,8 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
           board: initialBoard,
           players: existingPlayers,
           scores: undefined,
+          rtRwHolderId: roomState.rtRwHolderId ?? '',
+          rtRwStatus: roomState.rtRwStatus ?? 'NONE',
         },
         validMoves: initialValidMoves,
         selectedCard: null,
@@ -949,6 +1034,10 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         '🎮',
         `Rematch Dimulai! 7 ${SUIT_NAMES_ID[openerSuit]} dibuka otomatis.`
       );
+    },
+
+    startRematch: () => {
+      get().confirmRematch();
     },
 
     leaveToLobby: () => {
