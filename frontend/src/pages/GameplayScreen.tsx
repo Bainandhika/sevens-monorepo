@@ -83,7 +83,6 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
     attemptFoldCard,
     confirmFoldKeyCard,
     leaveToLobby,
-    showToast,
   } = useGameStore();
 
   // Initialize and run the TinyGo WebAssembly AI engine (with pure TS fallback & 700ms natural bot thinking delay)
@@ -429,12 +428,9 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
           setDrawerOpen(false);
           setModal('rules');
         }}
-        onOpenTempScoreboard={() => {
+        onOpenSettings={() => {
           setDrawerOpen(false);
-          showToast(
-            '📊',
-            `Skor Anda: ${me.penaltyPoints || 0} Poin Penalti (${me.foldedCards?.length || 0} kartu ditutup)`
-          );
+          setModal('settings');
         }}
         onExitToLobby={() => {
           setDrawerOpen(false);
