@@ -7,6 +7,9 @@ export type { RulesModalProps } from './RulesModal';
 export { SideDrawer } from './SideDrawer';
 export type { SideDrawerProps } from './SideDrawer';
 
+export { SettingsModal } from './SettingsModal';
+export type { SettingsModalProps } from './SettingsModal';
+
 export { ColdStartModal } from './ColdStartModal';
 export type { ColdStartModalProps } from './ColdStartModal';
 
