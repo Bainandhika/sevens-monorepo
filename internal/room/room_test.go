@@ -291,55 +291,196 @@ func TestRematchPreservesLossesCount(t *testing.T) {
 	mgr := NewManager()
 	r := mgr.GetOrCreateRoom("REMATCH01")
 
-	p1 := &Player{ID: "p1", Name: "P1", IsHost: true, IsReady: true, IsConnected: true, LossesCount: 0}
-	p2 := &Player{ID: "p2", Name: "P2", IsHost: false, IsReady: true, IsConnected: true, LossesCount: 2}
-	p3 := &Player{ID: "p3", Name: "P3", IsHost: false, IsReady: true, IsConnected: true, LossesCount: 1}
-	p4 := &Player{ID: "p4", Name: "P4", IsHost: false, IsReady: true, IsConnected: true, LossesCount: 3}
+	p1 := &Player{ID: "p1", Name: "P1", IsHost: true, IsReady: true, IsConnected: true, LossesCount: 0, ConsecutiveLosses: 0, StatusRTRW: engine.StatusNone}
+	p2 := &Player{ID: "p2", Name: "P2", IsHost: false, IsReady: true, IsConnected: true, LossesCount: 0, ConsecutiveLosses: 0, StatusRTRW: engine.StatusNone}
+	p3 := &Player{ID: "p3", Name: "P3", IsHost: false, IsReady: true, IsConnected: true, LossesCount: 0, ConsecutiveLosses: 0, StatusRTRW: engine.StatusNone}
+	p4 := &Player{ID: "p4", Name: "P4", IsHost: false, IsReady: true, IsConnected: true, LossesCount: 0, ConsecutiveLosses: 0, StatusRTRW: engine.StatusNone}
 	r.Players = append(r.Players, p1, p2, p3, p4)
 
-	r.RoundNumber = 1
-	r.Status = StatusFinished
-
 	rng := rand.New(rand.NewSource(777))
+	if err := r.StartMatch(false, rng); err != nil {
+		t.Fatalf("StartMatch initial failed: %v", err)
+	}
+
+	if r.RoundNumber != 1 {
+		t.Fatalf("expected initial roundNumber 1, got %d", r.RoundNumber)
+	}
+	if r.RTRWHolderID != "" || r.RTRWStatus != engine.StatusNone {
+		t.Fatalf("expected initial room RTRW empty, got holder=%q status=%s", r.RTRWHolderID, r.RTRWStatus)
+	}
+
+	// Play 6 consecutive rounds where p4 finishes 4th (Juru Kunci) in every round.
+	for round := 1; round <= 6; round++ {
+		// Assign folded cards ensuring p4 has the highest penalty (Juru Kunci)
+		p1.FoldedCards = []engine.Card{}
+		p2.FoldedCards = []engine.Card{{Suit: engine.Hearts, Rank: 2}}
+		p3.FoldedCards = []engine.Card{{Suit: engine.Hearts, Rank: 3}}
+		p4.FoldedCards = []engine.Card{{Suit: engine.Hearts, Rank: 10}}
+
+		r.FinalizeRound()
+
+		if r.Status != StatusFinished {
+			t.Fatalf("round %d: expected status %s, got %s", round, StatusFinished, r.Status)
+		}
+		if len(r.Scores) != 4 {
+			t.Fatalf("round %d: expected 4 score records, got %d", round, len(r.Scores))
+		}
+
+		// Verify p4 consecutive losses and cumulative losses
+		if p4.LossesCount != round {
+			t.Errorf("round %d: p4 LossesCount = %d; want %d", round, p4.LossesCount, round)
+		}
+		if p4.ConsecutiveLosses != round {
+			t.Errorf("round %d: p4 ConsecutiveLosses = %d; want %d", round, p4.ConsecutiveLosses, round)
+		}
+
+		// Verify non-loser players have 0 consecutive losses and NONE status
+		for _, p := range []*Player{p1, p2, p3} {
+			if p.ConsecutiveLosses != 0 {
+				t.Errorf("round %d: player %s ConsecutiveLosses = %d; want 0", round, p.ID, p.ConsecutiveLosses)
+			}
+			if p.StatusRTRW != engine.StatusNone {
+				t.Errorf("round %d: player %s StatusRTRW = %s; want %s", round, p.ID, p.StatusRTRW, engine.StatusNone)
+			}
+		}
+
+		// Verify RT/RW status at each milestone
+		if round < 3 {
+			if p4.StatusRTRW != engine.StatusNone {
+				t.Errorf("round %d: p4 StatusRTRW = %s; want %s", round, p4.StatusRTRW, engine.StatusNone)
+			}
+			if r.RTRWHolderID != "" || r.RTRWStatus != engine.StatusNone {
+				t.Errorf("round %d: room RTRWHolderID=%q, RTRWStatus=%s; want empty/NONE", round, r.RTRWHolderID, r.RTRWStatus)
+			}
+		} else if round < 6 {
+			// Rounds 3, 4, 5: p4 has achieved StatusRT
+			if p4.StatusRTRW != engine.StatusRT {
+				t.Errorf("round %d: p4 StatusRTRW = %s; want %s", round, p4.StatusRTRW, engine.StatusRT)
+			}
+			if r.RTRWHolderID != "p4" || r.RTRWStatus != engine.StatusRT {
+				t.Errorf("round %d: room RTRWHolderID=%q, RTRWStatus=%s; want p4/RT", round, r.RTRWHolderID, r.RTRWStatus)
+			}
+		} else {
+			// Round 6: p4 has achieved StatusRW (2 consecutive RT streaks)
+			if p4.StatusRTRW != engine.StatusRW {
+				t.Errorf("round %d: p4 StatusRTRW = %s; want %s", round, p4.StatusRTRW, engine.StatusRW)
+			}
+			if r.RTRWHolderID != "p4" || r.RTRWStatus != engine.StatusRW {
+				t.Errorf("round %d: room RTRWHolderID=%q, RTRWStatus=%s; want p4/RW", round, r.RTRWHolderID, r.RTRWStatus)
+			}
+		}
+
+		// Trigger rematch into next round
+		if err := r.StartMatch(true, rng); err != nil {
+			t.Fatalf("round %d rematch failed: %v", round, err)
+		}
+
+		// Verify rematch state reset
+		if r.RoundNumber != round+1 {
+			t.Errorf("expected roundNumber %d, got %d", round+1, r.RoundNumber)
+		}
+		if r.Status != StatusPlaying {
+			t.Errorf("expected status %s, got %s", StatusPlaying, r.Status)
+		}
+		if r.Scores != nil {
+			t.Errorf("expected scores to be reset to nil on rematch")
+		}
+
+		// Verify hands redealt and round penalty reset
+		for i, p := range r.Players {
+			if len(p.Hand) == 0 {
+				t.Errorf("player %d has empty hand after rematch deal", i)
+			}
+			if len(p.FoldedCards) != 0 {
+				t.Errorf("player %d has non-empty folded cards after rematch reset", i)
+			}
+			if p.PenaltyPoints != 0 {
+				t.Errorf("player %d has non-zero penalty points after rematch reset", i)
+			}
+		}
+
+		// Verify ConsecutiveLosses, StatusRTRW, RTRWHolderID, and RTRWStatus are preserved across rematch
+		if p4.LossesCount != round {
+			t.Errorf("after rematch: p4 LossesCount = %d; want %d", p4.LossesCount, round)
+		}
+		if p4.ConsecutiveLosses != round {
+			t.Errorf("after rematch: p4 ConsecutiveLosses = %d; want %d", p4.ConsecutiveLosses, round)
+		}
+
+		expectedStatus := engine.StatusNone
+		expectedHolder := ""
+		if round >= 6 {
+			expectedStatus = engine.StatusRW
+			expectedHolder = "p4"
+		} else if round >= 3 {
+			expectedStatus = engine.StatusRT
+			expectedHolder = "p4"
+		}
+
+		if p4.StatusRTRW != expectedStatus {
+			t.Errorf("after rematch %d: p4 StatusRTRW = %s; want %s", round, p4.StatusRTRW, expectedStatus)
+		}
+		if r.RTRWHolderID != expectedHolder || r.RTRWStatus != expectedStatus {
+			t.Errorf("after rematch %d: room RTRWHolderID=%q, RTRWStatus=%s; want %q/%s",
+				round, r.RTRWHolderID, r.RTRWStatus, expectedHolder, expectedStatus)
+		}
+	}
+
+	// Round 7: Streak break test. p1 finishes 4th, p4 finishes 1st.
+	// p4 ConsecutiveLosses resets to 0, but retains StatusRW until another player achieves RT.
+	p1.FoldedCards = []engine.Card{{Suit: engine.Hearts, Rank: 10}} // 4th place
+	p2.FoldedCards = []engine.Card{{Suit: engine.Hearts, Rank: 3}}
+	p3.FoldedCards = []engine.Card{{Suit: engine.Hearts, Rank: 2}}
+	p4.FoldedCards = []engine.Card{} // 1st place
+
+	r.FinalizeRound()
+
+	if p4.ConsecutiveLosses != 0 {
+		t.Errorf("round 7 streak break: p4 ConsecutiveLosses = %d; want 0", p4.ConsecutiveLosses)
+	}
+	if p4.StatusRTRW != engine.StatusRW {
+		t.Errorf("round 7 streak break: p4 StatusRTRW = %s; want %s", p4.StatusRTRW, engine.StatusRW)
+	}
+	if r.RTRWHolderID != "p4" || r.RTRWStatus != engine.StatusRW {
+		t.Errorf("round 7 streak break: room RTRWHolderID=%q, RTRWStatus=%s; want p4/RW", r.RTRWHolderID, r.RTRWStatus)
+	}
+	if p1.ConsecutiveLosses != 1 || p1.StatusRTRW != engine.StatusNone {
+		t.Errorf("round 7: p1 ConsecutiveLosses=%d, Status=%s; want 1/NONE", p1.ConsecutiveLosses, p1.StatusRTRW)
+	}
+
+	// Rounds 8 & 9: p1 loses two more times to reach 3 consecutive losses (RT), dethroning p4 (Exclusivity)
+	for round := 8; round <= 9; round++ {
+		if err := r.StartMatch(true, rng); err != nil {
+			t.Fatalf("round %d rematch failed: %v", round, err)
+		}
+		p1.FoldedCards = []engine.Card{{Suit: engine.Hearts, Rank: 10}}
+		p2.FoldedCards = []engine.Card{{Suit: engine.Hearts, Rank: 3}}
+		p3.FoldedCards = []engine.Card{{Suit: engine.Hearts, Rank: 2}}
+		p4.FoldedCards = []engine.Card{}
+		r.FinalizeRound()
+	}
+
+	// At round 9, p1 has 3 consecutive losses -> becomes StatusRT.
+	// p4's previous StatusRW must be stripped to StatusNone (strictly exclusive holder).
+	if p1.ConsecutiveLosses != 3 || p1.StatusRTRW != engine.StatusRT {
+		t.Errorf("round 9 dethrone: p1 ConsecutiveLosses=%d, Status=%s; want 3/RT", p1.ConsecutiveLosses, p1.StatusRTRW)
+	}
+	if p4.StatusRTRW != engine.StatusNone {
+		t.Errorf("round 9 exclusivity: p4 StatusRTRW = %s; want %s (stripped)", p4.StatusRTRW, engine.StatusNone)
+	}
+	if r.RTRWHolderID != "p1" || r.RTRWStatus != engine.StatusRT {
+		t.Errorf("round 9 dethrone: room RTRWHolderID=%q, RTRWStatus=%s; want p1/RT", r.RTRWHolderID, r.RTRWStatus)
+	}
+
+	// Rematch to round 10: verify p1 RT status and exclusivity preserved
 	if err := r.StartMatch(true, rng); err != nil {
-		t.Fatalf("StartMatch rematch failed: %v", err)
+		t.Fatalf("round 10 rematch failed: %v", err)
 	}
-
-	// Verify round number incremented
-	if r.RoundNumber != 2 {
-		t.Errorf("expected roundNumber 2, got %d", r.RoundNumber)
+	if p1.StatusRTRW != engine.StatusRT || p4.StatusRTRW != engine.StatusNone {
+		t.Errorf("round 10 rematch: p1=%s, p4=%s; want p1=RT, p4=NONE", p1.StatusRTRW, p4.StatusRTRW)
 	}
-	if r.Status != StatusPlaying {
-		t.Errorf("expected status %s, got %s", StatusPlaying, r.Status)
-	}
-	if r.Scores != nil {
-		t.Errorf("expected scores to be reset to nil on rematch")
-	}
-
-	// Verify hands redealt
-	for i, p := range r.Players {
-		if len(p.Hand) == 0 {
-			t.Errorf("player %d has empty hand after rematch deal", i)
-		}
-		if len(p.FoldedCards) != 0 {
-			t.Errorf("player %d has non-empty folded cards after rematch reset", i)
-		}
-		if p.PenaltyPoints != 0 {
-			t.Errorf("player %d has non-zero penalty points after rematch reset", i)
-		}
-	}
-
-	// Verify cumulative LossesCount preserved
-	expectedLosses := map[string]int{
-		"p1": 0,
-		"p2": 2,
-		"p3": 1,
-		"p4": 3,
-	}
-	for _, p := range r.Players {
-		if p.LossesCount != expectedLosses[p.ID] {
-			t.Errorf("player %s LossesCount = %d; want %d", p.ID, p.LossesCount, expectedLosses[p.ID])
-		}
+	if r.RTRWHolderID != "p1" || r.RTRWStatus != engine.StatusRT {
+		t.Errorf("round 10 rematch: room RTRWHolderID=%q, RTRWStatus=%s; want p1/RT", r.RTRWHolderID, r.RTRWStatus)
 	}
 }
 
