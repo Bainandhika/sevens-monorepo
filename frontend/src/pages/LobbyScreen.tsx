@@ -7,8 +7,9 @@ import {
   PlusCircle,
   ArrowRight,
   LogIn,
-  Spade,
   User as UserIcon,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { useGameStore, getInitials } from '../store/useGameStore';
 import { BotDifficulty } from '../types/game';
@@ -38,7 +39,6 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   onJoinOnlineRoom,
 }) => {
   const {
-    serverHealth,
     playerName,
     setPlayerName,
     randomizePlayerName,
@@ -51,6 +51,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     setModal,
     showToast,
     toast,
+    audioEnabled,
+    toggleAudio,
   } = useGameStore();
 
   const [isRolling, setIsRolling] = useState(false);
@@ -80,61 +82,75 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   return (
     <AppShell variant="cream">
       {/* (1) Fixed Top Bar */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-[#F5F2EB] border-b-[2.5px] border-black pt-safe">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-[#00D084] border-b-[2.5px] border-black pt-safe" data-purpose="lobby-header">
         <div className="w-full max-w-md mx-auto h-16 px-4 flex items-center justify-between">
           {/* Logo & Title */}
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-lg bg-[#FFE600] border-2 border-black flex items-center justify-center font-bold shadow-[2px_2px_0px_#000000] select-none">
-              <Spade className="w-5 h-5 text-black fill-black" aria-hidden="true" />
+            {/* 4-suit '7' card badge */}
+            <div className="w-11 h-11 bg-white border-2 border-black rounded-lg relative flex items-center justify-center shadow-[2px_2px_0px_#000000] shrink-0 select-none overflow-hidden">
+              <span className="absolute top-0.5 left-1 text-[9px] leading-none text-black font-black">♠</span>
+              <span className="absolute top-0.5 right-1 text-[9px] leading-none text-[#FF4343] font-black">♥</span>
+              <span className="font-display font-black text-2xl text-black leading-none pt-0.5">7</span>
+              <span className="absolute bottom-0.5 left-1 text-[9px] leading-none text-black font-black">♣</span>
+              <span className="absolute bottom-0.5 right-1 text-[9px] leading-none text-[#FF4343] font-black">♦</span>
             </div>
-            <h1 className="font-display font-black text-2xl tracking-tight text-black uppercase select-none">
-              LOBI
+            <h1 className="font-display font-black text-2xl tracking-wider text-black uppercase select-none">
+              MENU
             </h1>
           </div>
 
-          {/* Server Connection Status Badge */}
-          <div className="flex items-center">
-            {serverHealth === 'ready' ? (
-              <BrutalBadge variant="white" pulseDotColor="green" title="Server Backend Aktif & Siap">
-                Server Siap
-              </BrutalBadge>
+          {/* Right Audio Toggle Button */}
+          <button
+            type="button"
+            id="audio-toggle-btn"
+            onClick={toggleAudio}
+            aria-label="Toggle Suara"
+            title={audioEnabled ? 'Matikan Suara' : 'Aktifkan Suara'}
+            className="w-11 h-11 bg-white border-2 border-black rounded-lg flex items-center justify-center shadow-[2px_2px_0px_#000000] cursor-pointer active:translate-x-0.5 active:translate-y-0.5 active:shadow-none hover:bg-neutral-100 transition shrink-0"
+          >
+            {audioEnabled ? (
+              <Volume2 className="w-5 h-5 text-black stroke-2" aria-hidden="true" />
             ) : (
-              <BrutalBadge variant="white" pulseDotColor="yellow" title="Silent Wake-Up Server Sedang Berjalan">
-                Menyiapkan Server...
-              </BrutalBadge>
+              <VolumeX className="w-5 h-5 text-black stroke-2" aria-hidden="true" />
             )}
-          </div>
+          </button>
         </div>
       </header>
 
       {/* Main Content Area */}
       <main className="w-full px-4 pt-20 pb-24 space-y-4 flex-1 flex flex-col justify-start">
-        {/* (2) Hero Banner Kuning */}
-        <div className="relative overflow-hidden rounded-xl bg-[#FFE600] border-[2.5px] border-black p-4 shadow-[4px_4px_0px_#000000]">
-          <div className="flex items-start justify-between relative z-10">
-            <div className="space-y-0.5">
-              <div className="flex items-baseline gap-2">
-                <span className="font-display font-black text-4xl text-black tracking-tight uppercase leading-none select-none">
-                  7-an
-                </span>
-                <span className="px-2 py-0.5 rounded-md bg-white border-2 border-black text-[10px] font-display font-black uppercase tracking-wider shadow-[1px_1px_0px_#000000] select-none">
-                  TACTICAL!
-                </span>
-              </div>
-              <p className="font-sans font-bold text-sm text-black/85 select-none pt-1">
+        {/* (2) Hero Banner Mint Green */}
+        <section
+          className="relative overflow-hidden rounded-2xl bg-[#00D084] border-[2.5px] border-black p-4 shadow-[4px_4px_0px_#000000]"
+          data-purpose="banner-tactical"
+        >
+          <div className="pr-20">
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="font-display font-black text-3xl tracking-tight text-black">
+                7-an
+              </h2>
+            </div>
+            <div className="inline-block border-2 border-black rounded-lg px-2.5 py-0.5 shadow-[2px_2px_0px_#000000] bg-white">
+              <p className="text-xs font-display font-black text-black tracking-tight select-none">
                 Tentukan tujuanmu!
               </p>
             </div>
+          </div>
 
-            {/* Angled Card Badge 7♠ */}
-            <div
-              className="w-11 h-11 rounded-lg bg-white border-2 border-black flex items-center justify-center rotate-3 shadow-[2px_2px_0px_#000000] select-none shrink-0"
-              aria-label="Kartu 7 Sekop"
-            >
-              <span className="font-display font-black text-xl text-black">7♠</span>
+          {/* Decorative Card "7" with 4 suits */}
+          <div
+            className="absolute right-4 top-1/2 -translate-y-1/2 rotate-3 hover:rotate-0 transition-transform cursor-pointer select-none"
+            data-purpose="decorative-card"
+          >
+            <div className="w-16 h-16 bg-white border-2 border-black rounded-2xl relative flex items-center justify-center shadow-[3px_3px_0px_#000000] select-none overflow-hidden">
+              <span className="absolute top-1 left-1.5 text-xs leading-none text-black font-black">♠</span>
+              <span className="absolute top-1 right-1.5 text-xs leading-none text-[#FF4343] font-black">♥</span>
+              <span className="font-display font-black text-3xl text-black leading-none pt-0.5">7</span>
+              <span className="absolute bottom-1 left-1.5 text-xs leading-none text-black font-black">♣</span>
+              <span className="absolute bottom-1 right-1.5 text-xs leading-none text-[#FF4343] font-black">♦</span>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* (3) Section Nickname Form Profil Guest */}
         <section
