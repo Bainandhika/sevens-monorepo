@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import clsx from 'clsx';
 import { Card, Suit } from '../../types/game';
+import { useGameStore } from '../../store/useGameStore';
 import {
   RANK_LABELS,
   SUIT_SYMBOLS,
@@ -92,6 +93,7 @@ export function PlayingCard({
   onSelect,
   onDoubleTap,
 }: PlayingCardProps) {
+  const doubleTapEnabled = useGameStore((s) => s.doubleTapEnabled);
   const lastTapRef = useRef<number>(0);
 
   const rankLabel = RANK_LABELS[card.rank] ?? String(card.rank);
@@ -106,7 +108,11 @@ export function PlayingCard({
     const now = Date.now();
     const DOUBLE_TAP_THRESHOLD_MS = 300;
 
-    if (onDoubleTap && now - lastTapRef.current < DOUBLE_TAP_THRESHOLD_MS) {
+    if (
+      doubleTapEnabled &&
+      onDoubleTap &&
+      now - lastTapRef.current < DOUBLE_TAP_THRESHOLD_MS
+    ) {
       onDoubleTap(card);
       lastTapRef.current = 0;
     } else {
@@ -117,7 +123,9 @@ export function PlayingCard({
 
   const handleDoubleClick = () => {
     if (disabled) return;
-    onDoubleTap?.(card);
+    if (doubleTapEnabled) {
+      onDoubleTap?.(card);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -299,7 +307,7 @@ export function PlayingCard({
     );
   }
 
-  // Variant 4: Hand Card (Default in Player Hand 4-Column Grid)
+  // Variant 4: Hand Card (Default in Player Hand 2-Row Grid)
   return (
     <button
       type="button"
@@ -312,33 +320,33 @@ export function PlayingCard({
       onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       className={clsx(
-        'w-full h-8 md:h-9 rounded-md flex items-center justify-between px-1.5 select-none transition-all duration-150 font-display font-black text-xs md:text-sm tracking-tight',
+        'w-full h-12 sm:h-14 rounded-lg border-2 border-black p-1 flex flex-col justify-between select-none font-display font-black transition-all duration-150',
         isSelected
-          ? 'bg-[#FFE600] border-[2.5px] border-black ring-2 ring-black -translate-y-2 z-20 shadow-[2.5px_2.5px_0px_#000000]'
-          : 'bg-white border-2 border-black',
-        isPlayable && !isSelected && 'hover:-translate-y-1 hover:shadow-[2px_2px_0px_#000000]',
+          ? 'bg-[#FFE600] border-[2.5px] border-black ring-2 ring-black -translate-y-1.5 z-20 shadow-[2px_2px_0px_#000000]'
+          : 'bg-white',
+        isPlayable && !isSelected && 'hover:-translate-y-1 hover:shadow-[1.5px_1.5px_0px_#000000]',
         !disabled && 'cursor-pointer active:translate-y-0',
         disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
       )}
       style={{ color: textColor }}
     >
-      <span className="font-display font-black text-xs md:text-sm leading-none">
-        {rankLabel}
-      </span>
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center justify-between w-full leading-none">
+        <span className="text-[11px] sm:text-xs font-black leading-none">
+          {rankLabel}
+        </span>
         {isKey && (
           <span
-            className="text-[10px] md:text-[11px] leading-none"
+            className="text-[8px] sm:text-[9px] leading-none"
             title="Kartu Kunci (Denda 30 Poin jika ditutup)"
             aria-label="Kartu Kunci"
           >
             🔑
           </span>
         )}
-        <span className="text-sm md:text-base leading-none font-bold">
-          {suitSymbol}
-        </span>
       </div>
+      <span className="self-end text-xs sm:text-sm font-bold leading-none">
+        {suitSymbol}
+      </span>
     </button>
   );
 }
