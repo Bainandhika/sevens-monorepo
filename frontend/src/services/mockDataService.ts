@@ -3,6 +3,7 @@ import {
   BoardState,
   BotDifficulty,
   Card,
+  CommunityStatus,
   Player,
   PlayerScoreDetail,
   Rank,
@@ -32,11 +33,26 @@ export interface MockDataService {
     players: Player[],
     aceMode: AceMode
   ) => Record<string, PlayerScoreDetail>;
+  evaluateRTRWAfterRound: (
+    players: Player[],
+    scoreboard: Record<string, PlayerScoreDetail>
+  ) => {
+    players: Player[];
+    scoreboard: Record<string, PlayerScoreDetail>;
+    rtRwHolderId: string;
+    rtRwStatus: CommunityStatus;
+  };
   createOfflineMatchState: (
     humanPlayer: { id: string; name: string },
-    difficulty: BotDifficulty,
+    difficulty?: BotDifficulty,
     existingLosses?: Record<string, number>,
-    roundNumber?: number
+    roundNumber?: number,
+    existingCommunity?: {
+      rtRwHolderId?: string;
+      rtRwStatus?: CommunityStatus;
+      consecutiveLosses?: Record<string, number>;
+      statusRtRw?: Record<string, CommunityStatus>;
+    }
   ) => RoomState;
 }
 
@@ -306,6 +322,110 @@ export function calculateCardPenalty(
 }
 
 /**
+ * Evaluates and applies the Kondisi RT & RW community records transition after a round:
+ * - 4th-place finisher (Juru Kunci): increment lossesCount and consecutiveLosses.
+ * - 1st to 3rd place finishers: reset consecutiveLosses to 0.
+ * - If loser reaches consecutiveLosses >= 6: promoted to 'RW', any other player's RT/RW is stripped.
+ * - Else if loser reaches consecutiveLosses >= 3: promoted to 'RT', any other player's RT/RW is stripped.
+ * - Else: existing RT/RW badges are preserved (exclusivity: max 1 holder).
+ * - Finds single active holder of RT or RW in the room (or empty/NONE).
+ */
+export function evaluateRTRWAfterRound(
+  players: Player[],
+  scoreboard: Record<string, PlayerScoreDetail>
+): {
+  players: Player[];
+  scoreboard: Record<string, PlayerScoreDetail>;
+  rtRwHolderId: string;
+  rtRwStatus: CommunityStatus;
+} {
+  const updatedScoreboard: Record<string, PlayerScoreDetail> = { ...scoreboard };
+
+  // Pass 1: Update losses count and streak for each player
+  let loserId: string | null = null;
+  const updatedPlayers: Player[] = players.map((player) => {
+    const detail = updatedScoreboard[player.id];
+    const isJuruKunci = detail ? Boolean(detail.isJuruKunci) : false;
+    const currentStatus: CommunityStatus = player.statusRtRw || 'NONE';
+
+    let lossesCount = player.lossesCount ?? 0;
+    let consecutiveLosses = player.consecutiveLosses ?? 0;
+
+    if (isJuruKunci) {
+      lossesCount += 1;
+      consecutiveLosses += 1;
+      loserId = player.id;
+    } else {
+      consecutiveLosses = 0;
+    }
+
+    if (detail) {
+      updatedScoreboard[player.id] = {
+        ...detail,
+        lossesCount,
+        consecutiveLosses,
+        statusRtRw: currentStatus,
+      };
+    }
+
+    return {
+      ...player,
+      lossesCount,
+      consecutiveLosses,
+      statusRtRw: currentStatus,
+      penaltyPoints: detail ? detail.totalPenalty : player.penaltyPoints,
+    };
+  });
+
+  // Pass 2: Evaluate RT/RW promotion or dethroning for the Juru Kunci loser
+  if (loserId) {
+    const loser = updatedPlayers.find((p) => p.id === loserId);
+    if (loser) {
+      const loserStreak = loser.consecutiveLosses ?? 0;
+      if (loserStreak >= 6) {
+        // Upgrade to RW, strip any other player
+        for (let i = 0; i < updatedPlayers.length; i++) {
+          if (updatedPlayers[i].id === loserId) {
+            updatedPlayers[i].statusRtRw = 'RW';
+          } else {
+            updatedPlayers[i].statusRtRw = 'NONE';
+          }
+          if (updatedScoreboard[updatedPlayers[i].id]) {
+            updatedScoreboard[updatedPlayers[i].id].statusRtRw = updatedPlayers[i].statusRtRw;
+          }
+        }
+      } else if (loserStreak >= 3) {
+        // Qualify for RT, strip any other player
+        for (let i = 0; i < updatedPlayers.length; i++) {
+          if (updatedPlayers[i].id === loserId) {
+            updatedPlayers[i].statusRtRw = 'RT';
+          } else {
+            updatedPlayers[i].statusRtRw = 'NONE';
+          }
+          if (updatedScoreboard[updatedPlayers[i].id]) {
+            updatedScoreboard[updatedPlayers[i].id].statusRtRw = updatedPlayers[i].statusRtRw;
+          }
+        }
+      }
+    }
+  }
+
+  // Determine active room holder (max 1 holder)
+  const activeHolder = updatedPlayers.find(
+    (p) => p.statusRtRw === 'RT' || p.statusRtRw === 'RW'
+  );
+  const rtRwHolderId = activeHolder ? activeHolder.id : '';
+  const rtRwStatus: CommunityStatus = activeHolder?.statusRtRw || 'NONE';
+
+  return {
+    players: updatedPlayers,
+    scoreboard: updatedScoreboard,
+    rtRwHolderId,
+    rtRwStatus,
+  };
+}
+
+/**
  * Builds the final scoreboard rankings from an array of players and the current AceMode:
  * - Calculates breakdown of folded cards with individual penalties
  * - Computes total penalty points
@@ -355,12 +475,16 @@ export function buildFinalScoreboard(
       rankPosition,
       foldedCards: entry.foldedCardsWithPoints,
       totalPenalty: entry.totalPenalty,
+      lossesCount: entry.player.lossesCount ?? 0,
+      consecutiveLosses: entry.player.consecutiveLosses ?? 0,
+      statusRtRw: entry.player.statusRtRw ?? 'NONE',
       isWinner,
       isJuruKunci,
     };
   });
 
-  return scoreboard;
+  const evaluated = evaluateRTRWAfterRound(players, scoreboard);
+  return evaluated.scoreboard;
 }
 
 /**
@@ -376,7 +500,13 @@ export function createOfflineMatchState(
   humanPlayer: { id: string; name: string },
   difficulty: BotDifficulty = 'medium',
   existingLosses: Record<string, number> = {},
-  roundNumber: number = 1
+  roundNumber: number = 1,
+  existingCommunity?: {
+    rtRwHolderId?: string;
+    rtRwStatus?: CommunityStatus;
+    consecutiveLosses?: Record<string, number>;
+    statusRtRw?: Record<string, CommunityStatus>;
+  }
 ): RoomState {
   const dealResult = dealValidHandsWithOpener();
   const { hands, openerCard, openerPlayerIndex } = dealResult;
@@ -396,13 +526,15 @@ export function createOfflineMatchState(
     foldedCards: [],
     penaltyPoints: 0,
     lossesCount: existingLosses[humanId] ?? 0,
+    consecutiveLosses: existingCommunity?.consecutiveLosses?.[humanId] ?? 0,
+    statusRtRw: existingCommunity?.statusRtRw?.[humanId] ?? 'NONE',
     isConnected: true,
   };
 
   const bot1: Player = {
     id: 'bot_1',
-    name: 'Bot Taktis',
-    initials: 'BT',
+    name: 'Taktik7',
+    initials: 'T7',
     avatarColor: OFFLINE_AVATAR_COLORS[1], // '#F59E0B'
     isBot: true,
     botLevel: difficulty,
@@ -412,13 +544,15 @@ export function createOfflineMatchState(
     foldedCards: [],
     penaltyPoints: 0,
     lossesCount: existingLosses['bot_1'] ?? 0,
+    consecutiveLosses: existingCommunity?.consecutiveLosses?.['bot_1'] ?? 0,
+    statusRtRw: existingCommunity?.statusRtRw?.['bot_1'] ?? 'NONE',
     isConnected: true,
   };
 
   const bot2: Player = {
     id: 'bot_2',
-    name: 'Bot Cermat',
-    initials: 'BC',
+    name: 'Cermat8',
+    initials: 'C8',
     avatarColor: OFFLINE_AVATAR_COLORS[2], // '#A855F7'
     isBot: true,
     botLevel: difficulty,
@@ -428,13 +562,15 @@ export function createOfflineMatchState(
     foldedCards: [],
     penaltyPoints: 0,
     lossesCount: existingLosses['bot_2'] ?? 0,
+    consecutiveLosses: existingCommunity?.consecutiveLosses?.['bot_2'] ?? 0,
+    statusRtRw: existingCommunity?.statusRtRw?.['bot_2'] ?? 'NONE',
     isConnected: true,
   };
 
   const bot3: Player = {
     id: 'bot_3',
-    name: 'Bot Agresif',
-    initials: 'BA',
+    name: 'Agresif9',
+    initials: 'A9',
     avatarColor: OFFLINE_AVATAR_COLORS[3], // '#00D084'
     isBot: true,
     botLevel: difficulty,
@@ -444,6 +580,8 @@ export function createOfflineMatchState(
     foldedCards: [],
     penaltyPoints: 0,
     lossesCount: existingLosses['bot_3'] ?? 0,
+    consecutiveLosses: existingCommunity?.consecutiveLosses?.['bot_3'] ?? 0,
+    statusRtRw: existingCommunity?.statusRtRw?.['bot_3'] ?? 'NONE',
     isConnected: true,
   };
 
@@ -496,25 +634,20 @@ export function createOfflineMatchState(
     openerSuit: openerCard.suit,
     board: initialBoard,
     players,
+    rtRwHolderId: existingCommunity?.rtRwHolderId ?? '',
+    rtRwStatus: existingCommunity?.rtRwStatus ?? 'NONE',
   };
 }
 
 /**
- * Updates player lossesCount after round finalization.
- * Adds 1 to the loss count of the 4th rank (Juru Kunci) player ("Kalah: Nx").
+ * Updates player lossesCount, consecutiveLosses, and statusRtRw after round finalization.
  */
 export function applyRoundLosses(
   players: Player[],
   scoreboard: Record<string, PlayerScoreDetail>
 ): Player[] {
-  return players.map((player) => {
-    const detail = scoreboard[player.id];
-    const isJuruKunci = detail ? detail.isJuruKunci : false;
-    return {
-      ...player,
-      lossesCount: isJuruKunci ? (player.lossesCount || 0) + 1 : (player.lossesCount || 0),
-    };
-  });
+  const result = evaluateRTRWAfterRound(players, scoreboard);
+  return result.players;
 }
 
 /**
@@ -706,6 +839,8 @@ export function createDummyFinishedMatchState(
     board,
     players,
     scores: scoreboard,
+    rtRwHolderId: '',
+    rtRwStatus: 'NONE',
   };
 }
 
@@ -718,6 +853,7 @@ export const mockDataService: MockDataService = {
   dealValidHandsWithOpener,
   calculateCardPenalty,
   buildFinalScoreboard,
+  evaluateRTRWAfterRound,
   createOfflineMatchState,
 };
 
