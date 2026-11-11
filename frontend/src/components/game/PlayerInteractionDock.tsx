@@ -25,19 +25,14 @@ export interface PlayerInteractionDockProps {
  * PlayerInteractionDock
  *
  * Bottom interaction dock adhering to Tujuhan Tactical (7-an) Neo-Brutalist & Stitch Gameplay specs:
- * 1. Action Buttons Row:
- *    - Left Button: "TUTUP" (bg-[#FF4343] text-white).
- *      Disabled if:
- *        - validMoves.length > 0 (Aturan Anti-Bohong: cannot fold if legal moves exist)
- *        - selectedCard.rank === 7 (Anti-Sabotase: 7 cannot be folded)
- *        - !isMyTurn or !selectedCard
- *      Warning label "⚠️ TUTUP (6♥/8♠)" shown when key card 6 or 8 is selected and folding is allowed.
- *    - Right Button: "MAINKAN" (bg-[#00D084] text-black).
- *      Enabled ONLY if selectedCard is within validMoves and isMyTurn.
- * 2. Bottom Tray Area:
- *    - Left Tray (110px): Folded cards 2-column grid with header 'TUTUP' and red penalty badge 'P: XX'.
- *    - Center Separator: Vertical black divider (w-0.5 bg-black/30).
- *    - Right Tray (flex-1): Player Hand 4-column grid with header 'KARTU TANGAN' and yellow count badge.
+ * 3-Tier Vertical Layout:
+ * - Tier 1 (Top Action Buttons): grid grid-cols-2 gap-2 with 'TUTUP' (bg-[#FF5A5F]) and 'MAINKAN' (bg-[#00D084]).
+ * - Tier 2 (Middle 'KARTU TANGAN' Rack): Full-width container (bg-[#1B4332] border-2 border-black rounded-xl p-1.5 shadow-[2px_2px_0px_#000000])
+ *   with header ('KARTU TANGAN ({hand.length})' + status pill) and a 2-row no-scroll grid:
+ *     Row 1 (grid grid-cols-7 gap-1): hand.slice(0, 7)
+ *     Row 2 (grid grid-cols-6 gap-1 px-3 mt-1): hand.slice(7, 13)
+ * - Tier 3 (Bottom 'KARTU TUTUP' Strip): Compact horizontal bar (bg-[#1B4332] border-2 border-black rounded-xl py-1 px-2.5 flex items-center justify-between gap-2)
+ *   with label 'KARTU TUTUP', penalty badge 'Total: -{totalFoldPenalty} Poin', and horizontally scrollable mini-chips of foldedCards.
  */
 export const PlayerInteractionDock: React.FC<PlayerInteractionDockProps> = ({
   hand,
@@ -154,140 +149,188 @@ export const PlayerInteractionDock: React.FC<PlayerInteractionDockProps> = ({
       role="contentinfo"
       aria-label="Area Interaksi Pemain"
       className={clsx(
-        'w-full bg-[#F5F0EA] border-t-[3px] border-black pt-2 pb-5 px-2 flex flex-col gap-2 z-20 select-none',
+        'w-full bg-[#EDEBE6] border-t-[3px] border-black p-2 sm:p-2.5 flex flex-col gap-2 z-20 select-none shrink-0',
         className
       )}
     >
-      {/* Baris Tombol Aksi (TUTUP & MAINKAN) */}
-      <div className="flex items-center gap-2 w-full">
-        {/* Tombol Kiri: TUTUP (Kartu) */}
-        <button
-          type="button"
-          onClick={handleFoldClick}
-          disabled={isFoldDisabled}
-          title={foldTitle}
-          aria-label={foldButtonLabel}
-          className={clsx(
-            'flex-1 py-2 px-3 rounded-xl border-2 border-black font-display font-black text-xs uppercase tracking-wider transition-all duration-150',
-            'bg-[#FF4343] text-white',
-            isFoldDisabled
-              ? 'opacity-50 cursor-not-allowed shadow-none'
-              : 'neo-box-shadow hover:brightness-105 active:translate-x-0.5 active:translate-y-0.5'
-          )}
-        >
-          {foldButtonLabel}
-        </button>
+      <div className="flex flex-col gap-2 max-w-[480px] w-full mx-auto">
+        {/* Tier 1: Action Buttons (TUTUP & MAINKAN) */}
+        <div className="grid grid-cols-2 gap-2 w-full">
+          {/* Tombol Kiri: TUTUP */}
+          <button
+            type="button"
+            onClick={handleFoldClick}
+            disabled={isFoldDisabled}
+            title={foldTitle}
+            aria-label={foldButtonLabel}
+            className={clsx(
+              'w-full py-2.5 sm:py-3 rounded-xl border-2 border-black font-display font-black text-sm sm:text-base uppercase tracking-wider transition-all duration-150',
+              'bg-[#FF5A5F] text-white',
+              isFoldDisabled
+                ? 'opacity-50 cursor-not-allowed shadow-none'
+                : 'shadow-[2px_2px_0px_#000000] hover:brightness-105 active:translate-x-0.5 active:translate-y-0.5'
+            )}
+          >
+            TUTUP
+          </button>
 
-        {/* Tombol Kanan: MAINKAN (Kartu) */}
-        <button
-          type="button"
-          onClick={handlePlayClick}
-          disabled={isPlayDisabled}
-          title={playTitle}
-          aria-label={playButtonLabel}
-          className={clsx(
-            'flex-1 py-2 px-3 rounded-xl border-2 border-black font-display font-black text-xs uppercase tracking-wider transition-all duration-150',
-            'bg-[#00D084] text-black',
-            isPlayDisabled
-              ? 'opacity-50 cursor-not-allowed shadow-none'
-              : 'neo-box-shadow hover:brightness-105 active:translate-x-0.5 active:translate-y-0.5'
-          )}
-        >
-          {playButtonLabel}
-        </button>
-      </div>
+          {/* Tombol Kanan: MAINKAN */}
+          <button
+            type="button"
+            onClick={handlePlayClick}
+            disabled={isPlayDisabled}
+            title={playTitle}
+            aria-label={playButtonLabel}
+            className={clsx(
+              'w-full py-2.5 sm:py-3 rounded-xl border-2 border-black font-display font-black text-sm sm:text-base uppercase tracking-wider transition-all duration-150',
+              'bg-[#00D084] text-black',
+              isPlayDisabled
+                ? 'opacity-50 cursor-not-allowed shadow-none'
+                : 'shadow-[2px_2px_0px_#000000] hover:brightness-105 active:translate-x-0.5 active:translate-y-0.5'
+            )}
+          >
+            MAINKAN
+          </button>
+        </div>
 
-      {/* Area Bawah: Kiri (Folded Tray), Tengah (Separator), Kanan (Hand Grid) */}
-      <div className="flex items-stretch gap-2 w-full min-h-[140px]">
-        {/* Area Kiri: Kartu Tutup (Tray Folded) */}
+        {/* Tier 2: Middle 'KARTU TANGAN' Rack */}
+        <div
+          role="region"
+          aria-label="Rak Kartu Tangan"
+          className="bg-[#1B4332] border-2 border-black rounded-xl p-1.5 shadow-[2px_2px_0px_#000000] flex flex-col"
+        >
+          {/* Header Kartu Tangan */}
+          <div className="flex items-center justify-between px-1 mb-1.5">
+            <span className="font-display font-black text-xs uppercase tracking-tight text-white">
+              KARTU TANGAN ({hand.length})
+            </span>
+            {isMyTurn ? (
+              validMoves.length > 0 ? (
+                <span className="bg-[#00D084] text-black font-display font-black text-[10.5px] px-2 py-0.5 rounded-full border border-black shadow-[1px_1px_0px_#000000] leading-none">
+                  {validMoves.length} BISA MAIN
+                </span>
+              ) : (
+                <span className="bg-[#FF5A5F] text-white font-display font-black text-[10.5px] px-2 py-0.5 rounded-full border border-black shadow-[1px_1px_0px_#000000] leading-none">
+                  WAJIB TUTUP
+                </span>
+              )
+            ) : (
+              <span className="bg-[#FFE600] text-black font-display font-black text-[10.5px] px-2 py-0.5 rounded-full border border-black shadow-[1px_1px_0px_#000000] leading-none">
+                MENUNGGU
+              </span>
+            )}
+          </div>
+
+          {/* 2-Row No-Scroll Hand Cards Grid */}
+          {hand.length === 0 ? (
+            <div className="h-14 flex items-center justify-center text-center rounded-lg border border-dashed border-white/20 text-white/60 text-xs font-display font-bold">
+              Tangan Kosong
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {/* Baris 1 (7 kolom): hand.slice(0, 7) */}
+              <div className="grid grid-cols-7 gap-1">
+                {hand.slice(0, 7).map((card) => {
+                  const isSelected = Boolean(
+                    selectedCard &&
+                      selectedCard.suit === card.suit &&
+                      selectedCard.rank === card.rank
+                  );
+
+                  const isPlayable = validMoves.some(
+                    (vm) => vm.suit === card.suit && vm.rank === card.rank
+                  );
+
+                  return (
+                    <PlayingCard
+                      key={`hand-${card.suit}-${card.rank}`}
+                      card={card}
+                      variant="hand"
+                      isSelected={isSelected}
+                      isPlayable={isPlayable}
+                      disabled={!isMyTurn}
+                      onSelect={() => onSelectCard(card)}
+                      onDoubleTap={() => handleDoubleTapHandCard(card)}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Baris 2 (6 kolom): hand.slice(7, 13) */}
+              {hand.length > 7 && (
+                <div className="grid grid-cols-6 gap-1 px-3 mt-1">
+                  {hand.slice(7, 13).map((card) => {
+                    const isSelected = Boolean(
+                      selectedCard &&
+                        selectedCard.suit === card.suit &&
+                        selectedCard.rank === card.rank
+                    );
+
+                    const isPlayable = validMoves.some(
+                      (vm) => vm.suit === card.suit && vm.rank === card.rank
+                    );
+
+                    return (
+                      <PlayingCard
+                        key={`hand-${card.suit}-${card.rank}`}
+                        card={card}
+                        variant="hand"
+                        isSelected={isSelected}
+                        isPlayable={isPlayable}
+                        disabled={!isMyTurn}
+                        onSelect={() => onSelectCard(card)}
+                        onDoubleTap={() => handleDoubleTapHandCard(card)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Tier 3: Bottom 'KARTU TUTUP' Strip */}
         <div
           role="region"
           aria-label="Kotak Kartu Tutup"
-          className="w-[110px] shrink-0 bg-black/5 rounded-xl border border-black/20 p-1.5 flex flex-col gap-1.5"
+          className="bg-[#1B4332] border-2 border-black rounded-xl py-1 px-2.5 flex items-center justify-between gap-2 shadow-[2px_2px_0px_#000000]"
         >
-          {/* Header Tray Tutup */}
-          <div className="flex items-center justify-between px-0.5">
-            <span className="font-display font-black text-[11px] uppercase tracking-wider text-black">
-              TUTUP
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="font-display font-black text-xs uppercase tracking-tight text-white">
+              KARTU TUTUP
             </span>
-            <span
-              title={`Total Poin Penalti Anda: ${currentPenaltyPoints}`}
-              className="bg-[#FF4343] text-white font-mono font-black text-[10px] px-1.5 py-0.5 rounded leading-none shadow-[1px_1px_0px_#000000]"
-            >
-              P: {currentPenaltyPoints}
+            <span className="bg-[#FF5A5F] text-white font-display font-black text-[10px] px-2 py-0.5 rounded-full border border-black shadow-[1px_1px_0px_#000000] leading-none">
+              Total: -{currentPenaltyPoints} Poin
             </span>
           </div>
 
-          {/* Grid 2 Kolom Kartu Tertutup */}
-          <div className="grid grid-cols-2 gap-1 overflow-y-auto max-h-[125px] pr-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[60%] sm:max-w-[70%]">
             {foldedCards.length === 0 ? (
-              <div className="col-span-2 h-16 flex flex-col items-center justify-center text-center rounded-lg border border-dashed border-black/20 text-black/40 text-[10px] font-display font-bold leading-tight px-1">
-                <span>0 KARTU</span>
-                <span className="text-[9px]">TERTUTUP</span>
-              </div>
+              <span className="text-white/40 text-[10px] font-bold italic">
+                0 kartu
+              </span>
             ) : (
-              foldedCards.map((card, idx) => (
-                <PlayingCard
-                  key={`folded-${card.suit}-${card.rank}-${idx}`}
-                  card={card}
-                  variant="folded"
-                />
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Garis Separator Hitam Tengah */}
-        <div
-          className="w-0.5 bg-black/30 shrink-0 self-stretch rounded-full my-0.5"
-          aria-hidden="true"
-        />
-
-        {/* Area Kanan: Grid 4 Kolom Kartu Tangan */}
-        <div
-          role="region"
-          aria-label="Daftar Kartu Tangan Pemain"
-          className="flex-1 min-w-0 bg-black/5 rounded-xl border border-black/20 p-1.5 flex flex-col gap-1.5"
-        >
-          {/* Header Kartu Tangan */}
-          <div className="flex items-center justify-between px-0.5">
-            <span className="font-display font-black text-[11px] uppercase tracking-wider text-black">
-              KARTU TANGAN
-            </span>
-            <span className="bg-[#FFE600] text-black border border-black/30 font-mono font-black text-[10px] px-1.5 py-0.5 rounded leading-none shadow-[1px_1px_0px_#000000]">
-              {hand.length} KARTU
-            </span>
-          </div>
-
-          {/* Grid 4 Kolom Kartu Tangan */}
-          <div className="grid grid-cols-4 gap-1 overflow-y-auto max-h-[125px] pr-0.5">
-            {hand.length === 0 ? (
-              <div className="col-span-4 h-16 flex items-center justify-center text-center rounded-lg border border-dashed border-black/20 text-black/40 text-xs font-display font-bold">
-                Tangan Kosong
-              </div>
-            ) : (
-              hand.map((card) => {
-                const isSelected = Boolean(
-                  selectedCard &&
-                    selectedCard.suit === card.suit &&
-                    selectedCard.rank === card.rank
-                );
-
-                const isPlayable = validMoves.some(
-                  (vm) => vm.suit === card.suit && vm.rank === card.rank
-                );
+              foldedCards.map((card, idx) => {
+                const isKey = isKeyCard(card);
+                const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
+                const textColor = isKey ? '#FFFFFF' : (isRed ? '#FF4343' : '#000000');
+                const rankLabel = RANK_LABELS[card.rank] ?? String(card.rank);
+                const suitSymbol = SUIT_SYMBOLS[card.suit] ?? '';
 
                 return (
-                  <PlayingCard
-                    key={`hand-${card.suit}-${card.rank}`}
-                    card={card}
-                    variant="hand"
-                    isSelected={isSelected}
-                    isPlayable={isPlayable}
-                    disabled={!isMyTurn}
-                    onSelect={() => onSelectCard(card)}
-                    onDoubleTap={() => handleDoubleTapHandCard(card)}
-                  />
+                  <div
+                    key={`folded-${card.suit}-${card.rank}-${idx}`}
+                    className={clsx(
+                      'h-7 px-1.5 rounded-lg border-2 border-black flex items-center justify-between gap-1 shrink-0 select-none font-display font-black text-xs shadow-[1px_1px_0px_#000000]',
+                      isKey ? 'bg-[#FF4D4D]' : 'bg-white'
+                    )}
+                    style={{ color: textColor }}
+                    title={`Kartu Tutup: ${rankLabel}${suitSymbol}${isKey ? ' (Denda 30 Poin)' : ''}`}
+                  >
+                    <span className="leading-none">{rankLabel}</span>
+                    {isKey && <span className="text-[9px] leading-none">🔑</span>}
+                    <span className="text-sm font-bold leading-none">{suitSymbol}</span>
+                  </div>
                 );
               })
             )}
@@ -299,4 +342,3 @@ export const PlayerInteractionDock: React.FC<PlayerInteractionDockProps> = ({
 };
 
 export default PlayerInteractionDock;
-
