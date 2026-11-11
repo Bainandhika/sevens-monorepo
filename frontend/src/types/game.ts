@@ -11,7 +11,11 @@ export type AceMode = 'LOCKED_NONE' | 'LOW' | 'HIGH';
 
 export type BotDifficulty = 'easy' | 'medium' | 'hard';
 
-export type ScreenRoute = 'lobby' | 'waiting_room' | 'gameplay' | 'scoreboard';
+export type CommunityStatus = 'NONE' | 'RT' | 'RW';
+
+export type ScreenName = 'lobby' | 'waiting_room' | 'gameplay' | 'scoreboard' | 'shuffling';
+
+export type ScreenRoute = ScreenName;
 
 export type ServerHealthStatus = 'ready' | 'waking' | 'offline';
 
@@ -50,6 +54,8 @@ export interface Player {
   foldedCards: Card[];
   penaltyPoints: number;
   lossesCount: number;
+  consecutiveLosses?: number;
+  statusRtRw?: CommunityStatus;
   isConnected: boolean;
 }
 
@@ -71,6 +77,9 @@ export interface PlayerScoreDetail {
     isAceLocked: boolean;
   }>;
   totalPenalty: number;
+  lossesCount?: number;
+  consecutiveLosses?: number;
+  statusRtRw?: CommunityStatus;
   isWinner: boolean;
   isJuruKunci: boolean;
 }
@@ -89,9 +98,20 @@ export interface RoomState {
   board: BoardState;
   players: Player[];
   scores?: Record<string, PlayerScoreDetail>;
+  rtRwHolderId?: string;
+  rtRwStatus?: CommunityStatus;
 }
 
-export type ActiveModalType = 'none' | 'rules' | 'key_warning' | 'cold_start' | 'rematch';
+export type ModalType =
+  | 'none'
+  | 'rules'
+  | 'key_warning'
+  | 'cold_start'
+  | 'rematch'
+  | 'settings'
+  | 'round_log';
+
+export type ActiveModalType = ModalType;
 
 export interface ToastState {
   visible: boolean;
