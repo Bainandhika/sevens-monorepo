@@ -303,7 +303,8 @@ export interface RoomState {
 }
 ```
 
-#### Aturan Transisi Kondisi RT/RW (State Machine Engine):
+#### Aturan Transisi Kondisi RT/RW (State Machine Engine)
+
 1. **Kondisi RT (KEPALA RT):** Pemain menempati peringkat ke-4 (Juru Kunci / penalti tertinggi) sebanyak 3 kali berturut-turut (`consecutiveLosses == 3`) di room yang sama.
 2. **Kondisi RW (KEPALA RW):** Pemain menempati peringkat ke-4 sebanyak 6 kali berturut-turut (`consecutiveLosses >= 6`, yaitu 2 streak RT berturut-turut tanpa jeda peringkat 1–3). Status otomatis naik dari RT ke RW.
 3. **Eksklusivitas Kamar (Single Active Holder):** Di dalam satu room hanya boleh ada maksimal 1 pemegang status RT atau RW dalam satu waktu. Ketika pemain lain mencapai RT (`consecutiveLosses == 3`), status pemegang sebelumnya seketika dicabut dan di-reset ke `NONE`.
@@ -355,6 +356,7 @@ export interface RoomState {
 ### 7. PlayerInteractionDock (3-Tier Vertical Stack)
 
 Komponen dock kontrol pemain di bagian bawah layar gameplay (`GameplayScreen`) dengan arsitektur 3 tingkat vertikal tanpa scroll:
+
 - **Tingkat 1 (Top Action Buttons):** Dua tombol aksi lebar penuh berdampingan (`grid grid-cols-2 gap-2`):
   - Tombol `TUTUP`: Latar merah coral (`#FF5A5F`), dinonaktifkan jika pemain memiliki kartu yang valid dimainkan (Anti-Bohong).
   - Tombol `MAINKAN`: Latar hijau mint (`#00D084`), aktif hanya jika kartu yang dipilih valid disambung ke meja.
@@ -367,6 +369,7 @@ Komponen dock kontrol pemain di bagian bawah layar gameplay (`GameplayScreen`) d
 ### 8. ScoreboardScreen (Papan Skor & Rekor Komunitas RT/RW)
 
 Halaman penutup ronde (`ScoreboardScreen`) bergaya Neo-Brutalist dengan integrasi telemetry komunitas:
+
 - **Header:** Latar hijau mint (`#10B981`, border 3px bawah) dengan tombol kembali, judul `PAPAN SKOR`, dan pill kode room `#{roomCode}`.
 - **Subheader:** Baris telemetry dengan badge kiri `RONDE {roundNumber}` dan badge kanan status nilai As (`🔒 STATUS AS: {aceModeLabel}`).
 - **Bagian 1 ('RINCIAN KARTU PEMAIN'):** Daftar 4 kartu pemain kompak terurut dari peringkat 1 hingga 4. Setiap kartu menampilkan avatar inisial (`1ST` tag untuk peringkat 1), nama pemain, tag `ANDA` / `BOT`, pill peringkat (`PEMENANG`, `#2`, `#3`, `JURU KUNCI`), total penalti poin, rincian kartu yang ditutup/terbuka, akumulasi `Kalah: Nx`, dan badge animasi `RT!` atau `RW!` jika pemain memegang gelar.
@@ -378,6 +381,7 @@ Halaman penutup ronde (`ScoreboardScreen`) bergaya Neo-Brutalist dengan integras
 ### 9. SettingsModal (Pengaturan Permainan)
 
 Modal konfigurasi permainan yang diakses melalui tombol `PENGATURAN` pada `SideDrawer`:
+
 - **Header:** Kuning mencolok (`#FFE600`, border 3px hitam) dengan judul `PENGATURAN PERMAINAN`.
 - **Toggle 1 (Efek Audio & Suara):** Switch on/off untuk audio latar dan efek suara kartu, tersimpan di `localStorage` (`sevens_settings_v1`).
 - **Toggle 2 (Tap 2 Kali Main / Tutup):** Switch on/off gestur double-tap untuk eksekusi langkah kartu cepat.
@@ -386,6 +390,7 @@ Modal konfigurasi permainan yang diakses melalui tombol `PENGATURAN` pada `SideD
 ### 10. ShuffleRitualScreen (Ritual Kocok Kartu & Waiting Lounge)
 
 Layar pasca-rematch (Layar 5) menggantikan countdown modal 3 detik:
+
 - **Cabang Juru Kunci (Kocok Kartu Manual):**
   - Header hijau mint `RITUAL KOCOK KARTU` dengan telemetry room dan ronde.
   - Kartu instruksi `KOCOK KARTU MANUAL`, indikator `PUTARAN {step} / 3`, dan progress bar 3 segmen.
