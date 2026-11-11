@@ -22,9 +22,11 @@ type Player struct {
 	IsReady        bool                 `json:"isReady"`
 	Hand           []engine.Card        `json:"hand"`
 	FoldedCards    []engine.Card        `json:"foldedCards"`
-	PenaltyPoints  int                  `json:"penaltyPoints"`
-	LossesCount    int                  `json:"lossesCount"`
-	IsConnected    bool                 `json:"isConnected"`
+	PenaltyPoints     int                  `json:"penaltyPoints"`
+	LossesCount       int                  `json:"lossesCount"`
+	ConsecutiveLosses int                  `json:"consecutiveLosses"`
+	StatusRTRW        engine.CommunityStatus `json:"statusRtRw"`
+	IsConnected       bool                 `json:"isConnected"`
 	Session        *melody.Session      `json:"-"`
 	SessionToken   string               `json:"-"`
 	DisconnectedAt *time.Time           `json:"-"`
@@ -44,6 +46,8 @@ type Room struct {
 	Board        *engine.Board                       `json:"board"`
 	Players      []*Player                           `json:"players"`
 	Scores       map[string]engine.PlayerScoreDetail `json:"scores,omitempty"`
+	RTRWHolderID string                              `json:"rtRwHolderId"`
+	RTRWStatus   engine.CommunityStatus              `json:"rtRwStatus"`
 	LastActivity time.Time                           `json:"lastActivity"`
 	LastFoldTurn map[string]int                      `json:"-"`
 	Mu           sync.RWMutex                        `json:"-"`
@@ -85,6 +89,8 @@ func (m *Manager) GetOrCreateRoom(roomID string) *Room {
 		AceMode:      engine.AceModeLockedNone,
 		Board:        engine.NewBoard(),
 		Players:      make([]*Player, 0),
+		RTRWHolderID: "",
+		RTRWStatus:   engine.StatusNone,
 		LastFoldTurn: make(map[string]int),
 		LastActivity: time.Now(),
 	}
