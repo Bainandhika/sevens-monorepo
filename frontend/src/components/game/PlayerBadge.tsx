@@ -33,10 +33,9 @@ function getPlayerInitials(player: Player): string {
  * - Lawan hanya menampilkan:
  *   1. Avatar bulat (w-8 h-8 rounded-full border-2 border-black font-black text-xs dengan 2 karakter inisial nama)
  *   2. Titik status koneksi (bg-[#00D084] jika online, bg-slate-400 jika bot/offline)
- *   3. Nama pemain (text-[11px] font-black text-black)
+ *   3. Nama pemain (text-[11px] font-black text-black) + Dark BOT tag jika bot
  *   4. Badge giliran aktif (pinging dot kuning)
- *   5. Badge rekor kumulatif 'Kalah: Nx' (px-1.5 py-0.5 rounded-lg border-2 border-black font-black text-[10px];
- *      bg-[#FF4343] text-white jika lossesCount > 0, bg-[#F5F0EA] text-black jika 0x)
+ *   5. Badge rekor kumulatif 'Kalah: Nx' & Badge Eksklusif RT/RW (#8B0000)
  */
 export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
   player,
@@ -82,14 +81,14 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
         />
       </div>
 
-      {/* Info Pemain: Nama, Status Giliran, dan Rekor Kalah */}
+      {/* Info Pemain: Nama, Status Giliran, Rekor Kalah, dan Status RT/RW */}
       <div
         className={clsx(
           'flex flex-col justify-center min-w-0',
           isRightAligned ? 'items-end' : 'items-start'
         )}
       >
-        {/* Baris 1: Nama Pemain + Pinging Dot Giliran */}
+        {/* Baris 1: Nama Pemain + BOT Tag + Pinging Dot Giliran */}
         <div
           className={clsx(
             'flex items-center gap-1.5 max-w-full',
@@ -108,6 +107,13 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
             )}
           </span>
 
+          {/* Dark BOT tag for bot players */}
+          {player.isBot && (
+            <span className="bg-[#121212] text-white text-[7px] px-1 py-0.5 rounded font-display font-bold uppercase shrink-0">
+              BOT
+            </span>
+          )}
+
           {/* Badge Giliran Aktif: Pinging dot kuning */}
           {isCurrentTurn && (
             <span
@@ -121,8 +127,13 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
           )}
         </div>
 
-        {/* Baris 2: Badge Rekor Kumulatif 'Kalah: Nx' */}
-        <div className="mt-0.5">
+        {/* Baris 2: Badge Rekor Kumulatif 'Kalah: Nx' & Status Eksklusif RT/RW */}
+        <div
+          className={clsx(
+            'mt-0.5 flex items-center gap-1',
+            isRightAligned ? 'justify-end' : 'justify-start'
+          )}
+        >
           <span
             className={clsx(
               'px-1.5 py-0.5 rounded-lg border-2 border-black font-black text-[10px] leading-none inline-flex items-center justify-center select-none shadow-[1px_1px_0px_#000000]',
@@ -134,6 +145,19 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
           >
             Kalah: {lossesCount}x
           </span>
+
+          {(player.statusRtRw === 'RT' || player.statusRtRw === 'RW') && (
+            <span
+              className="bg-[#8b0000] text-white border-[1.5px] border-black rounded px-1 py-0.5 text-[8px] font-display font-black uppercase leading-none shadow-[1px_1px_0px_#000000]"
+              title={
+                player.statusRtRw === 'RW'
+                  ? 'RW: 6x Kalah Beruntun'
+                  : 'RT: 3x Kalah Beruntun'
+              }
+            >
+              {player.statusRtRw}
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -141,4 +165,3 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
 };
 
 export default PlayerBadge;
-
