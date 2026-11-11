@@ -9,6 +9,7 @@ import { LobbyScreen } from './pages/LobbyScreen';
 import { WaitingRoomScreen } from './pages/WaitingRoomScreen';
 import { GameplayScreen } from './pages/GameplayScreen';
 import { ScoreboardScreen } from './pages/ScoreboardScreen';
+import { ShuffleRitualScreen } from './pages/ShuffleRitualScreen';
 import { RulesModal } from './components/modals/RulesModal';
 import { SettingsModal } from './components/modals/SettingsModal';
 import { ColdStartModal } from './components/modals/ColdStartModal';
@@ -300,6 +301,12 @@ export const App: React.FC<AppRootProps> = () => {
         return (
           <ScoreboardScreen
             onRequestRematch={handleRequestRematch}
+            onReturnToLobby={handleReturnToLobby}
+          />
+        );
+      case 'shuffling':
+        return (
+          <ShuffleRitualScreen
             onReturnToLobby={handleReturnToLobby}
           />
         );
