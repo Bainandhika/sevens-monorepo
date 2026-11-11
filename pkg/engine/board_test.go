@@ -593,3 +593,119 @@ func TestLegacyScoreCalculation(t *testing.T) {
 		t.Errorf("Expected total minus 80, got %d", score.TotalMinus)
 	}
 }
+
+// TestKondisiRTRWExclusivityAndUpgrade verifies RT/RW state transitions: 3-loss RT, 6-loss RW,
+// exclusivity stripping, and streak-breaking semantics across multiple consecutive rounds.
+func TestKondisiRTRWExclusivityAndUpgrade(t *testing.T) {
+	playerIDs := []string{"p1", "p2", "p3", "p4"}
+	losses := map[string]int{"p1": 0, "p2": 0, "p3": 0, "p4": 0}
+	streaks := map[string]int{"p1": 0, "p2": 0, "p3": 0, "p4": 0}
+	status := map[string]CommunityStatus{"p1": StatusNone, "p2": StatusNone, "p3": StatusNone, "p4": StatusNone}
+
+	playRound := func(loserID string) map[string]PlayerScoreDetail {
+		inputs := make([]PlayerScoreInput, len(playerIDs))
+		for i, id := range playerIDs {
+			var folded []Card
+			if id == loserID {
+				// Juru Kunci: folded key card 6 -> 30 penalty points
+				folded = []Card{{Suit: Spades, Rank: KeyRankSix}}
+			}
+			inputs[i] = PlayerScoreInput{
+				PlayerID:          id,
+				PlayerName:        id,
+				SeatIndex:         i,
+				FoldedCards:       folded,
+				LossesCount:       losses[id],
+				ConsecutiveLosses: streaks[id],
+				StatusRTRW:        status[id],
+			}
+		}
+
+		res := CalculateFinalLeaderboard(inputs, AceModeLockedNone)
+		for id, d := range res {
+			losses[id] = d.LossesCount
+			streaks[id] = d.ConsecutiveLosses
+			status[id] = d.StatusRTRW
+		}
+		return res
+	}
+
+	// 1. 3 consecutive 4th-place losses -> StatusRT
+	playRound("p1")
+	if streaks["p1"] != 1 || status["p1"] != StatusNone {
+		t.Fatalf("Round 1: expected p1 streak=1, status=NONE, got streak=%d, status=%s", streaks["p1"], status["p1"])
+	}
+	playRound("p1")
+	if streaks["p1"] != 2 || status["p1"] != StatusNone {
+		t.Fatalf("Round 2: expected p1 streak=2, status=NONE, got streak=%d, status=%s", streaks["p1"], status["p1"])
+	}
+	playRound("p1")
+	if streaks["p1"] != 3 || status["p1"] != StatusRT {
+		t.Fatalf("Round 3: expected p1 streak=3, status=RT, got streak=%d, status=%s", streaks["p1"], status["p1"])
+	}
+
+	// 2. 6 consecutive 4th-place losses -> StatusRW
+	playRound("p1")
+	playRound("p1")
+	if streaks["p1"] != 5 || status["p1"] != StatusRT {
+		t.Fatalf("Round 5: expected p1 streak=5, status=RT, got streak=%d, status=%s", streaks["p1"], status["p1"])
+	}
+	playRound("p1")
+	if streaks["p1"] != 6 || status["p1"] != StatusRW {
+		t.Fatalf("Round 6: expected p1 streak=6, status=RW, got streak=%d, status=%s", streaks["p1"], status["p1"])
+	}
+
+	// 3. Exclusivity: Another player hitting 3 consecutive losses becomes RT and strips previous holder's status
+	// Round 7: P2 loses -> P1 streak resets to 0 but retains StatusRW badge
+	playRound("p2")
+	if streaks["p1"] != 0 || status["p1"] != StatusRW {
+		t.Fatalf("Round 7: expected p1 streak=0, status=RW, got streak=%d, status=%s", streaks["p1"], status["p1"])
+	}
+	if streaks["p2"] != 1 || status["p2"] != StatusNone {
+		t.Fatalf("Round 7: expected p2 streak=1, status=NONE, got streak=%d, status=%s", streaks["p2"], status["p2"])
+	}
+
+	// Round 8: P2 loses -> streak 2
+	playRound("p2")
+	if streaks["p2"] != 2 || status["p2"] != StatusNone || status["p1"] != StatusRW {
+		t.Fatalf("Round 8: expected p2 streak=2, status=NONE; p1 status=RW")
+	}
+
+	// Round 9: P2 loses 3rd in a row -> P2 becomes StatusRT, P1 is stripped to StatusNone (exclusivity)
+	playRound("p2")
+	if streaks["p2"] != 3 || status["p2"] != StatusRT {
+		t.Fatalf("Round 9: expected p2 streak=3, status=RT, got streak=%d, status=%s", streaks["p2"], status["p2"])
+	}
+	if status["p1"] != StatusNone {
+		t.Fatalf("Round 9: expected p1 status to be stripped to NONE, got %s", status["p1"])
+	}
+	for _, id := range []string{"p1", "p3", "p4"} {
+		if status[id] != StatusNone {
+			t.Fatalf("Round 9: expected %s status=NONE, got %s", id, status[id])
+		}
+	}
+
+	// 4. Streak break: A current StatusRT holder who finishes 1st-3rd has ConsecutiveLosses reset to 0,
+	// retaining StatusRT badge, and must reach 6 straight losses from 0 to become StatusRW
+	// Round 10: P3 loses -> P2 finishes 1st-3rd, streak resets to 0 but retains StatusRT badge
+	playRound("p3")
+	if streaks["p2"] != 0 || status["p2"] != StatusRT {
+		t.Fatalf("Round 10: expected p2 streak=0, status=RT, got streak=%d, status=%s", streaks["p2"], status["p2"])
+	}
+
+	// Rounds 11-13: P2 loses 3 times in a row -> streak reaches 3, retains StatusRT (needs 6 straight for RW)
+	playRound("p2")
+	playRound("p2")
+	playRound("p2")
+	if streaks["p2"] != 3 || status["p2"] != StatusRT {
+		t.Fatalf("Round 13: expected p2 streak=3, status=RT, got streak=%d, status=%s", streaks["p2"], status["p2"])
+	}
+
+	// Rounds 14-16: P2 loses 3 more times in a row -> streak reaches 6 -> upgraded to StatusRW
+	playRound("p2")
+	playRound("p2")
+	playRound("p2")
+	if streaks["p2"] != 6 || status["p2"] != StatusRW {
+		t.Fatalf("Round 16: expected p2 streak=6, status=RW, got streak=%d, status=%s", streaks["p2"], status["p2"])
+	}
+}
