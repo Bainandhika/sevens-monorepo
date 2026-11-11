@@ -26,10 +26,12 @@ func (r *Room) FillEmptySeatsWithHardBots() {
 			IsHost:        false,
 			IsReady:       true,
 			IsConnected:   true,
-			Hand:          make([]engine.Card, 0),
-			FoldedCards:   make([]engine.Card, 0),
-			PenaltyPoints: 0,
-			LossesCount:   0,
+			Hand:              make([]engine.Card, 0),
+			FoldedCards:       make([]engine.Card, 0),
+			PenaltyPoints:     0,
+			LossesCount:       0,
+			ConsecutiveLosses: 0,
+			StatusRTRW:        engine.StatusNone,
 		}
 		r.Players = append(r.Players, bot)
 	}
@@ -70,6 +72,9 @@ func (r *Room) StartMatch(isRematch bool, rng *rand.Rand) error {
 		r.Players[i].Hand = hands[i]
 		r.Players[i].FoldedCards = make([]engine.Card, 0)
 		r.Players[i].PenaltyPoints = 0
+		if r.Players[i].StatusRTRW == "" {
+			r.Players[i].StatusRTRW = engine.StatusNone
+		}
 	}
 
 	r.Board = engine.NewBoard()
@@ -84,8 +89,13 @@ func (r *Room) StartMatch(isRematch bool, rng *rand.Rand) error {
 	r.TurnNumber = 1
 	if isRematch {
 		r.RoundNumber++
+		if r.RTRWStatus == "" {
+			r.RTRWStatus = engine.StatusNone
+		}
 	} else {
 		r.RoundNumber = 1
+		r.RTRWHolderID = ""
+		r.RTRWStatus = engine.StatusNone
 	}
 	r.Scores = nil
 	r.LastFoldTurn = make(map[string]int)
@@ -242,29 +252,43 @@ func (r *Room) AdvanceTurn() {
 }
 
 // FinalizeRound finishes the match round, calculates leaderboard rankings, synchronizes penalties,
-// and increments LossesCount for the 4th-place Juru Kunci.
+// and updates LossesCount, ConsecutiveLosses, and RT/RW community status for all players and room.
 func (r *Room) FinalizeRound() {
 	r.Status = StatusFinished
 	r.LastActivity = time.Now()
 
 	inputs := make([]engine.PlayerScoreInput, len(r.Players))
 	for i, p := range r.Players {
+		status := p.StatusRTRW
+		if status == "" {
+			status = engine.StatusNone
+		}
 		inputs[i] = engine.PlayerScoreInput{
-			PlayerID:    p.ID,
-			PlayerName:  p.Name,
-			SeatIndex:   i,
-			FoldedCards: p.FoldedCards,
+			PlayerID:          p.ID,
+			PlayerName:        p.Name,
+			SeatIndex:         i,
+			FoldedCards:       p.FoldedCards,
+			LossesCount:       p.LossesCount,
+			ConsecutiveLosses: p.ConsecutiveLosses,
+			StatusRTRW:        status,
 		}
 	}
 
 	scores := engine.CalculateFinalLeaderboard(inputs, r.AceMode)
 	r.Scores = scores
 
+	r.RTRWHolderID = ""
+	r.RTRWStatus = engine.StatusNone
+
 	for _, p := range r.Players {
 		if detail, ok := scores[p.ID]; ok {
 			p.PenaltyPoints = detail.TotalPenalty
-			if detail.IsJuruKunci {
-				p.LossesCount++
+			p.LossesCount = detail.LossesCount
+			p.ConsecutiveLosses = detail.ConsecutiveLosses
+			p.StatusRTRW = detail.StatusRTRW
+			if p.StatusRTRW == engine.StatusRT || p.StatusRTRW == engine.StatusRW {
+				r.RTRWHolderID = p.ID
+				r.RTRWStatus = p.StatusRTRW
 			}
 		}
 	}
