@@ -11,6 +11,7 @@ export {
   dealValidHandsWithOpener,
   calculateCardPenalty,
   buildFinalScoreboard,
+  evaluateRTRWAfterRound,
   createOfflineMatchState,
   applyRoundLosses,
   createDummyScoreboardData,
