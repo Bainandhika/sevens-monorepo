@@ -81,6 +81,8 @@ func HasExcessSevens(hands [][]Card) bool {
 // DealCardsWithAutoReshuffle deals 52 cards evenly across 4 players (13 cards each).
 // If any player receives >= 3 cards of Rank 7, it automatically reshuffles and redeals
 // (up to 200 attempts) before returning the sorted hands via SortHand.
+// If all 200 attempts exceed the threshold, a deterministic balanced fallback deals
+// exactly one 7 to each player, rendering >= 3 Sevens mathematically impossible.
 func DealCardsWithAutoReshuffle(rng *rand.Rand) [][]Card {
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -88,6 +90,7 @@ func DealCardsWithAutoReshuffle(rng *rand.Rand) [][]Card {
 
 	standardDeck := NewStandardDeck()
 	var hands [][]Card
+	validDeal := false
 
 	for attempt := 0; attempt < 200; attempt++ {
 		deck := ShuffleDeck(standardDeck, rng)
@@ -100,12 +103,56 @@ func DealCardsWithAutoReshuffle(rng *rand.Rand) [][]Card {
 		}
 
 		if !HasExcessSevens(hands) {
+			validDeal = true
 			break
 		}
 	}
 
+	if !validDeal {
+		hands = DealBalancedFallback(rng)
+	}
+
 	for i := range hands {
 		hands[i] = SortHand(hands[i])
+	}
+
+	return hands
+}
+
+// DealBalancedFallback deterministically distributes one Rank 7 card to each of the 4 players,
+// then randomly distributes the remaining 48 cards (12 cards each), guaranteeing that no
+// player holds >= 3 Rank 7 cards.
+func DealBalancedFallback(rng *rand.Rand) [][]Card {
+	if rng == nil {
+		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+	}
+
+	hands := make([][]Card, 4)
+	for i := 0; i < 4; i++ {
+		hands[i] = make([]Card, 0, 13)
+	}
+
+	sevens := []Card{
+		{Suit: Spades, Rank: AnchorRank},
+		{Suit: Hearts, Rank: AnchorRank},
+		{Suit: Clubs, Rank: AnchorRank},
+		{Suit: Diamonds, Rank: AnchorRank},
+	}
+	sevens = ShuffleDeck(sevens, rng)
+	for i := 0; i < 4; i++ {
+		hands[i] = append(hands[i], sevens[i])
+	}
+
+	standardDeck := NewStandardDeck()
+	remaining := make([]Card, 0, 48)
+	for _, card := range standardDeck {
+		if card.Rank != AnchorRank {
+			remaining = append(remaining, card)
+		}
+	}
+	remaining = ShuffleDeck(remaining, rng)
+	for i, card := range remaining {
+		hands[i%4] = append(hands[i%4], card)
 	}
 
 	return hands
