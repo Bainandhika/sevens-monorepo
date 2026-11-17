@@ -140,100 +140,127 @@ spacing:
   space-xl: 2rem
 ---
 
-# Brand & Style
+# Brand & Style Guide: Tujuhan Tactical (Neo-Brutalism)
 
-This design system establishes a high-voltage Neo-Brutalist visual identity engineered specifically for digital adaptations of traditional Indonesian trick-taking and card shed games, primarily *Cangkulan* and *7-an* (Seven Spades / Tujuhan).
-
-## Personality & Tone
-
-- **Tactical & Kinetic:** Sharp, high-stakes, responsive, and immediate. Card plays, tactical folds, and sequence breaks land with physical weight.
-- **Nostalgic yet Electric:** Warms the communal street-corner atmosphere of Indonesian *pos ronda* card nights into an amplified, arcade-grade cyber-retro interface.
-- **Unapologetic Rawness:** Heavy ink-traps, unsoftened edges, deliberate offset shadows, and saturated blocks of pigment that reject generic flat design or subtle gradient tropes.
-
-### Target Audience & Emotional Impact
-
-Designed for competitive casuals, university students, and classic card enthusiasts across mobile and web. The interface must evoke tension, visceral satisfaction on card slaps, and supreme clarity during fast-paced 4-player turns.
-
-## Colors
-
-The palette operates on uncompromising color collisions. Every hue is hyper-saturated, balanced against stark black structural framing (`#000000`) and pure canvas chalk (`#FFFFFF`).
-
-### Palette Allocation
-
-- **Electric Mint (`#10B981`):** Primary brand accent, confirmed turns, active player indicator, successful sequences, and valid card plays.
-- **Canary Yellow (`#FFD000`):** Secondary action state, trump suit indicator, spade callouts, attention chips, and active turn indicators.
-- **Punchy Coral Red (`#FF3B30`):** Tertiary tactical color, heart/diamond card suits, fouls, skips, penalty draws, and forfeit actions.
-- **Vibrant Sky Cyan (`#00D4FF`):** Utility accent, club/spade neutral states, round stats, match multipliers, and chat badges.
-- **Deep Black (`#000000` & `#0F172A`):** Pure outline ink, hard dropped cast shadows, and terminal-grade typographic marks.
-- **Pure Milk Chalk (`#FFFFFF`):** High-readability card faces, text badges, and crisp interactive container fills.
-
-### Color Rules
-
-- No soft color blending or multi-stop gradients across card components.
-- Borders and hard drop-shadows must always be rendered in absolute `#000000`.
-- Dark mode inverses the field canvas to an ink-dense `#0F172A`, keeping borders `#000000` or `#FFFFFF` at absolute contrast and preserving pure neon fills.
-
-## Typography
-
-The typographic pairing balances raw mechanical punch with ultra-crisp interface legibility.
-
-### Hierarchy & Application
-
-- **Headline & Display Font (`Space Grotesk`):** Delivers aggressive geometric cuts, hard numeric symbols, and assertive table callouts. Used for scores, card indices (A, K, Q, J, 10–2), table states, and big screen banners. Headlines must remain uppercase or sentence case with tight tracking.
-- **Body Font (`Plus Jakarta Sans`):** Offsets the harshness of brutalism with clean, rhythmic readability for game rule explanations, chat overlays, log history, and profile data.
-- **Label Font (`Space Grotesk`):** Heavy, compact uppercase labels for button triggers, suit badges, multipliers, and phase counters.
-
-## Layout & Spacing
-
-The layout is grounded in rigid spatial containment. Elements do not float unanchored; they sit within distinct boxed territories defined by explicit outlines.
-
-### Grid & Composition
-
-- **Game Table Layout:** Uses contextual fixed safe areas with a central green felt playfield canvas framed by a 12-column responsive layout for lobby, deck management, and stats viewports.
-- **Player Rail:** In game-play mode, the hand tray occupies the bottom viewport area with strict `space-xs` overlapping card negative margins (-28px desktop, -16px mobile) to support multi-card fan formations.
-- **Breakpoints:**
-  - **Mobile (< 640px):** Single-column stack for lobbies; table view defaults to horizontal orientation lock or compact portrait arena with fixed action trays.
-  - **Tablet (641px - 1024px):** 8-column layout with pinned chat and battle logs.
-  - **Desktop (> 1024px):** 12-column layout with 24px margins, housing full-size round analytics, live table spectators, and tactile scoreboard modules.
-
-## Elevation & Depth
-
-This design system strictly prohibits Gaussian blurs, diffuse ambient drop shadows, and pseudo-realistic 3D bevels. Elevation is expressed entirely through **Hard-Edge Offset Shadows** and structural black ink weight.
-
-### Depth Hierarchy
-
-- **Level 0 (Flat Canvas / Felt):** 0px offset. Flat background with optional 1px grid pattern or halftoning.
-- **Level 1 (Surface Cards & Structural Containers):**
-  - Border: `2px solid #000000`
-  - Shadow: `3px 3px 0px #000000`
-- **Level 2 (Interactive Buttons, Playing Cards in Hand, Modals):**
-  - Border: `3px solid #000000`
-  - Shadow: `4px 4px 0px #000000`
-- **Level 3 (Dragged Cards, Critical Victory Prompts, Floating Action HUD):**
-  - Border: `3px solid #000000`
-  - Shadow: `6px 6px 0px #000000`
-- **Active / Pressed State (Physical Slapdown):**
-  - Transform: `translate(2px, 2px)` (or `translate(3px, 3px)` for Level 2/3)
-  - Shadow: `1px 1px 0px #000000`
-  - Provides instant, physical haptic response mimicking slamming a physical card onto a wooden table.
-
-## Shapes
-
-The design system uses a strict **Soft Neo-Brutalist** curvature (`roundedness: 1` — 4px base radius, 8px on large cards, 12px on overlay panels).
-
-### Geometry Rules
-
-- Never use fully pill-shaped or bubble radiuses for operational buttons; buttons must maintain boxy, angular dignity.
-- Playing cards on the central table (`variant="board"`) utilize a 12px (`0.75rem` / `rounded-xl`) corner radius, square-portrait proportions (`h-[76px] sm:h-20`), a `2.5px` solid black border, and a `3px 3px 0px #000000` hard offset shadow, while compact cards in hand and folded trays use a 6px (`rounded-md`) radius.
-- Badges and status pills may employ sharp 0px or soft 4px corners, always framed in `2px` black line-weights.
+Sistem desain ini mendefinisikan identitas visual Neo-Brutalist bertegangan tinggi khusus untuk adaptasi digital permainan kartu tradisional Indonesia **"7-an" (Tujuhan / Tujuh Sekop)**.
 
 ---
 
-## 2. Arsitektur State & Skema Data (Data Schema)
+## 1. Personality & Tone
 
-### 2.1 Room State JSON Schema
+* **Tactical & Kinetic:** Tajam, bertensi tinggi, instan, dan responsif. Setiap giliran, keputusan menutup kartu, serta penalti kartu kunci mendarat dengan bobot taktis yang nyata.
+* **Nostalgia Pos Ronda Elektrik:** Mentransformasikan kehangatan nongkrong main kartu di gardu pos ronda malam hari menjadi antarmuka cyber-retro bergaya arkade modern.
+* **Unapologetic Rawness:** Sudut tegas tanpa gradien halus, garis tepi hitam pekat (*solid black outlines*), bayangan balok tanpa blur (*hard-edge offset shadows*), dan balok warna berpigmen tinggi yang menolak kompromi minimalisme hampa.
+* **Target & Dampak Emosional:** Diciptakan untuk pemain kasual kompetitif, mahasiswa, dan komunitas pencinta kartu klasik di perangkat mobile (PWA) maupun desktop. Memberikan kepuasan visual haptic saat kartu valid diturunkan (*card slap*), serta kejelasan hierarki saat ronde berlangsung cepat.
 
-Arsitektur state aplikasi menggunakan paradigma *Single Source of Truth* (SSOT) terpadu antara Go engine Wasm, backend WebSocket, dan klien React TypeScript:
+---
+
+## 2. Token Desain Komprehensif (Design Tokens)
+
+### 2.1 Palet Warna (Color System)
+
+| Token Name | Hex Code | Nilai RGB | Penggunaan Semantik |
+| :--- | :--- | :--- | :--- |
+| **`surface` / `background`** | `#FAF8FF` | `rgb(250, 248, 255)` | Kanvas latar belakang utama aplikasi & lobi |
+| **`surface-container-lowest`** | `#FFFFFF` | `rgb(255, 255, 255)` | Muka kartu standar, kartu profil, input box, modal |
+| **`surface-container-low`** | `#F2F3FF` | `rgb(242, 243, 255)` | Baris latar belakang alternatif, sel sekunder |
+| **`surface-container`** | `#EAEDFF` | `rgb(234, 237, 255)` | Kontainer panel sekunder, status badge netral |
+| **`surface-container-high`** | `#E1E7FF` | `rgb(225, 231, 255)` | Batas kontainer, divider tebal, badge netral |
+| **`surface-container-highest`** | `#DAE2FD` | `rgb(218, 226, 253)` | Header sel sekunder, bar navigasi tidak aktif |
+| **`inverse-surface`** | `#283044` | `rgb(40, 48, 68)` | Badge bot AI (`BOT`), kartu status kunci bot hard |
+| **`inverse-on-surface`** | `#EEF0FF` | `rgb(238, 240, 255)` | Teks putih-kebiruan di atas latar gelap |
+| **`primary`** | `#006C49` | `rgb(0, 108, 73)` | Aksen hijau dalam, outline primer, tint |
+| **`primary-container`** | `#10B981` | `rgb(16, 185, 129)` | Hijau Mint: Tombol MAINKAN, banner lobi, badge SIAP |
+| **`on-primary-container`** | `#00422B` | `rgb(0, 66, 43)` | Teks kontras tinggi di atas kontainer primer |
+| **`secondary-container`** | `#FFD000` / `#FFE600` | `rgb(255, 208, 0)` | Kuning Canary: Kartu 7, banner Room ID, tombol REMATCH |
+| **`tertiary-container`** | `#FF7B6B` / `#FF5A5F` | `rgb(255, 123, 107)` | Merah Coral: Tombol TUTUP / FOLD, indikator penalti |
+| **`error`** | `#BA1A1A` / `#BE091D` | `rgb(186, 26, 26)` | Merah Bahaya: Tombol Keluar / Bubarkan Meja, denda 6/8 |
+| **`felt-green`** | `#0C693A` | `rgb(12, 105, 58)` | Permukaan felt meja hijau pada Central Board |
+| **`dock-tray`** | `#EDEBE6` | `rgb(237, 235, 230)` | Baki abu-abu hangat luar pada PlayerInteractionDock |
+| **`dock-rack`** | `#1B4332` | `rgb(27, 67, 50)` | Kontainer hijau tua pekat rak kartu tangan & kartu tutup |
+| **`rt-rw-maroon`** | `#8B0000` | `rgb(139, 0, 0)` | Merah Marun RT/RW: Badge eksklusif KEPALA RT & KEPALA RW |
+| **`suit-black`** | `#000000` | `rgb(0, 0, 0)` | Garis tepi (*outlines*), bayangan balok, lambang Sekop/Keriting |
+| **`suit-red`** | `#FF4343` | `rgb(255, 67, 67)` | Lambang Hati (`♥`) dan Wajik (`♦`) pada kartu remi |
+
+#### Aturan Penerapan Warna
+
+1. **Dilarang Gradien Halus:** Seluruh blok warna harus solid (*flat color fill*).
+2. **Batas Garis Mutlak:** Semua kontainer, kartu, tombol, dan modal dibingkai garis tepi hitam pekat `solid #000000` (ketebalan `2px` hingga `3px`).
+3. **Pembeda Kartu Kunci (6 & 8):** Menggunakan ikon emoji kunci `🔑` berwarna emas/kuning di sudut kanan atas kartu tangan untuk menandai risiko denda flat 30 poin.
+
+---
+
+### 2.2 Skala Tipografi (Typography Scale)
+
+| Token | Font Family | Weight | Size | Line Height | Tracking | Penggunaan |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`display-hero`** | Space Grotesk | 700 (Bold) | 56px | 60px | -0.04em | Headline raksasa desktop / Splash |
+| **`display-hero-mobile`** | Space Grotesk | 700 (Bold) | 38px | 42px | -0.03em | Judul banner "7-an" pada mobile |
+| **`headline-lg`** | Space Grotesk | 700 (Bold) | 36px | 40px | -0.02em | Judul layar utama, skor kemenangan |
+| **`headline-lg-mobile`** | Space Grotesk | 700 (Bold) | 28px | 32px | -0.02em | Header mobile, judul modal |
+| **`headline-md`** | Space Grotesk | 700 (Bold) | 24px | 28px | -0.01em | Judul sub-seksi, nomor ronde |
+| **`headline-sm`** | Space Grotesk | 600 (Semibold) | 20px | 24px | 0em | Nama pemain, label modal penting |
+| **`body-lg`** | Plus Jakarta Sans | 500 (Medium) | 18px | 26px | 0em | Aturan permainan, pengantar instruksi |
+| **`body-md`** | Plus Jakarta Sans | 500 (Medium) | 15px | 22px | 0em | Teks dialog, toast status, info room |
+| **`body-sm`** | Plus Jakarta Sans | 400 (Regular) | 13px | 18px | 0.01em | Keterangan denda, subteks rekam jejak |
+| **`label-lg`** | Space Grotesk | 700 (Bold) | 14px | 18px | 0.04em | Tombol aksi utama (MAINKAN, TUTUP) |
+| **`label-md`** | Space Grotesk | 700 (Bold) | 12px | 16px | 0.05em | Indeks kartu remi, badge status |
+| **`label-sm`** | Space Grotesk | 700 (Bold) | 10px | 12px | 0.06em | Indeks kartu sekunder, telemetry tag |
+
+---
+
+### 2.3 Sistem Ruang & Tata Letak (Spacing & Layout)
+
+* **Gutter & Margin:**
+  * Mobile (< 640px): Margin `1rem` (16px), Gutter `0.75rem` (12px).
+  * Desktop ($\ge$ 640px): Margin `1.5rem` (24px), Gutter `1rem` (16px).
+* **Skala Spacing:**
+  * `space-xs`: `0.25rem` (4px) — Jarak antar mini-card, padding badge rapat.
+  * `space-sm`: `0.5rem` (8px) — Jarak antar tombol aksi kecil, celah grid kartu.
+  * `space-md`: `1rem` (16px) — Padding dalam kontainer kartu, jarak antar baris.
+  * `space-lg`: `1.5rem` (24px) — Jarak antar seksi halaman, celah modal.
+  * `space-xl`: `2rem` (32px) — Ruang batas atas/bawah layar gameplay.
+
+---
+
+### 2.4 Sistem Ketinggian & Bayangan Balok (Elevation & Depth)
+
+Tidak menggunakan *ambient blur* atau bayangan difus. Kedalaman diukur murni lewat **Hard-Edge Offset Shadows** hitam solid:
+
+* **Level 0 (Flat Felt / Canvas):** Offset `0px 0px 0px #000000`. Latar felt hijau dan kanvas kanvas lobi.
+* **Level 1 (Surface Cards & Structural Containers):**
+  * Border: `2px solid #000000`
+  * Shadow: `3px 3px 0px #000000`
+  * Komponen: Kotak PlayerBadge lawan, slot CentralBoard, baris skor.
+* **Level 2 (Interactive Buttons, Playing Cards in Hand, Modals):**
+  * Border: `3px solid #000000`
+  * Shadow: `4px 4px 0px #000000`
+  * Komponen: Tombol `MAINKAN`, `TUTUP`, `MAIN LAGI`, modal popup, kartu tangan.
+* **Level 3 (Prompts Kritis & Banner Hero):**
+  * Border: `3px solid #000000`
+  * Shadow: `6px 6px 0px #000000`
+  * Komponen: Hero banner lobi, banner Room ID kuning, modal kartu 6/8.
+* **Active / Pressed State (Haptic Slapdown):**
+  * Transformasi: `translate(2px, 2px)` (atau `translate(3px, 3px)` pada tombol Level 2).
+  * Shadow terkompresi: `1px 1px 0px #000000`.
+  * Menghasilkan sensasi fisik bantingan kartu di atas meja kayu.
+
+---
+
+### 2.5 Geometri & Bentuk (Shapes & Radii)
+
+* `rounded-sm`: `0.125rem` (2px) — Tag telemetry kecil.
+* `rounded-DEFAULT`: `0.25rem` (4px) — Badge status, tag BOT, chip kartu tutup.
+* `rounded-md`: `0.375rem` (6px) — Kartu tangan mini vertikal (`h-12 sm:h-14`), input box.
+* `rounded-lg`: `0.5rem` (8px) — Tombol aksi utama, kontainer sekunder.
+* `rounded-xl`: `0.75rem` (12px) — Kartu meja CentralBoard (`w-full h-[76px] sm:h-20`), panel modal.
+* `rounded-full`: `9999px` — Avatar inisial pemain, indikator lampu koneksi server.
+
+---
+
+## 3. Arsitektur State & Skema Data (Data Schema)
+
+Menggunakan paradigma *Single Source of Truth* (SSOT) antara engine TinyGo Wasm, backend WebSocket Melody, dan klien React TypeScript:
 
 ```typescript
 export type CommunityStatus = 'NONE' | 'RT' | 'RW';
@@ -256,8 +283,8 @@ export interface Player {
   foldedCards: Card[];
   penaltyPoints: number;
   lossesCount: number;
-  consecutiveLosses: number; // Jumlah kekalahan peringkat ke-4 (Juru Kunci) berurutan di room yang sama
-  statusRtRw: 'NONE' | 'RT' | 'RW'; // Status komunitas aktif: 'NONE' | 'RT' | 'RW'
+  consecutiveLosses: number; // Jumlah kekalahan peringkat 4 (Juru Kunci) berurutan
+  statusRtRw: CommunityStatus; // Status komunitas aktif: 'NONE' | 'RT' | 'RW'
   isConnected: boolean;
 }
 
@@ -274,7 +301,7 @@ export interface PlayerScoreDetail {
   totalPenalty: number;
   lossesCount: number;
   consecutiveLosses: number;
-  statusRtRw: 'NONE' | 'RT' | 'RW';
+  statusRtRw: CommunityStatus;
   isWinner: boolean;
   isJuruKunci: boolean;
 }
@@ -298,108 +325,179 @@ export interface RoomState {
   };
   players: Player[];
   scores?: Record<string, PlayerScoreDetail>;
-  rtRwHolderId: string;       // ID pemain pemegang tunggal status RT/RW aktif di meja
-  rtRwStatus: 'NONE' | 'RT' | 'RW'; // Status komunitas tunggal aktif: 'NONE' | 'RT' | 'RW'
+  rtRwHolderId: string;        // ID pemain pemegang tunggal status RT/RW aktif
+  rtRwStatus: CommunityStatus; // Status komunitas tunggal aktif: 'NONE' | 'RT' | 'RW'
 }
 ```
 
-#### Aturan Transisi Kondisi RT/RW (State Machine Engine)
+### Aturan State Machine RT/RW
 
-1. **Kondisi RT (KEPALA RT):** Pemain menempati peringkat ke-4 (Juru Kunci / penalti tertinggi) sebanyak 3 kali berturut-turut (`consecutiveLosses == 3`) di room yang sama.
-2. **Kondisi RW (KEPALA RW):** Pemain menempati peringkat ke-4 sebanyak 6 kali berturut-turut (`consecutiveLosses >= 6`, yaitu 2 streak RT berturut-turut tanpa jeda peringkat 1–3). Status otomatis naik dari RT ke RW.
-3. **Eksklusivitas Kamar (Single Active Holder):** Di dalam satu room hanya boleh ada maksimal 1 pemegang status RT atau RW dalam satu waktu. Ketika pemain lain mencapai RT (`consecutiveLosses == 3`), status pemegang sebelumnya seketika dicabut dan di-reset ke `NONE`.
-4. **Reset Streak Kalah:** Finis di peringkat 1, 2, atau 3 mereset `consecutiveLosses` pemain tersebut ke `0`. Pemegang gelar RT/RW yang finis di peringkat 1–3 tetap mempertahankan lencana gelarnya sampai ada pemain lain yang mencapai `consecutiveLosses == 3`.
+1. **KEPALA RT:** Pemain menempati peringkat ke-4 (Juru Kunci / penalti tertinggi) sebanyak 3 kali berturut-turut (`consecutiveLosses == 3`) di meja yang sama.
+2. **KEPALA RW:** Pemain menempati peringkat ke-4 sebanyak 6 kali berturut-turut (`consecutiveLosses >= 6`, yaitu 2 streak RT berturut-turut). Status otomatis naik dari RT ke RW.
+3. **Pemegang Tunggal (Single Active Holder):** Hanya boleh ada maksimal 1 pemegang gelar RT atau RW dalam satu waktu di satu room. Jika pemain lain mencapai `consecutiveLosses == 3`, gelar pemain sebelumnya langsung gugur dan di-reset ke `NONE`.
+4. **Reset Streak:** Finis di posisi 1, 2, atau 3 mereset `consecutiveLosses` pemain tersebut ke `0`. Pemegang gelar tetap memegang lencana sampai ada pemain lain yang mencapai 3 kekalahan beruntun.
 
 ---
 
-## 3. Spesifikasi Komponen UI (Component Specifications)
+## 4. Hierarki Komponen & Spesifikasi 10 Layar (Screens Specification)
 
-### 1. Playing Cards (Core Component)
+### 4.1 Layar 1: Lobi Utama (`LobbyScreen`)
 
-- **Face Card Styling (Table / Board Variant):** Square-portrait card (`w-full h-[76px] sm:h-20`, `rounded-xl`), crisp white background (`#FFFFFF`) for standard ranks and Canary Yellow (`#FFE600`) for anchor rank `7`, framed with a `2.5px solid #000000` border and `3px 3px 0px #000000` hard drop-shadow.
-- **3-Point Board Card Anatomy:**
-  - **Top-Left Index:** Primary rank label (`Space Grotesk`, `font-black`, `12px–14px`) aligned to top-left in flat suit color (`#000000` for `♠`/`♣`, `#FF4343` for `♥`/`♦`).
-  - **Center Suit Motif:** Centered suit symbol (`18px–20px`) in flat suit color. Key card icons (`🔑`) are omitted on board cards.
-  - **Bottom-Right Index:** Upright secondary rank label (`10px–12px`, `font-bold`, `65%` opacity) aligned to bottom-right.
-- **Unopened Suit Placeholder (`SuitPlaceholder`):** Matches board card dimensions (`w-full h-[76px] sm:h-20`, `rounded-xl`) with a dark translucent felt overlay (`bg-black/20`, `2px solid rgba(255, 255, 255, 0.15)`) and centered suit symbol (`85%` opacity).
-- **Hand & Folded Strip Variants:** Compact horizontal strips (`h-8` / `h-9`, `rounded-md`, `2px solid #000000` border) displaying rank on the left and key badge (`🔑` for 6 & 8) + suit symbol on the right. Mini-card tangan vertikal menggunakan dimensi `h-12 sm:h-14` dengan grid 7-kolom dan 6-kolom.
-- **Valid Play State:** Electric Mint dashed target slot (`2px dashed #00D084`) on the board and upward selection lift (`-translate-y-2`) with Canary Yellow fill (`#FFE600`) in hand.
-- **Card Back:** Canary Yellow (`#FFD000`) canvas with a dense 45-degree black checkerboard or Indonesian batik-geometric diamond grid framed in `3px` black border.
+* **Header Bar:** Latar hijau mint (`#00D084` / `#10B981`, border-b 3px hitam), ikon kartu 4-lambang, teks `MENU`, dan tombol saklar audio di kanan.
+* **Hero Banner:** Kotak Neo-Brutalist hijau mint tebal (`border-[3px] border-black shadow-[4px_4px_0px_#000000]`), judul besar `7-an` (`Space Grotesk 700 38px`), kapsul putih `Tentukan tujuanmu!`, dan ilustrasi kartu 7 miring artistik di kanan.
+* **Guest Profile Card:**
+  * Kolom input nama dibatasi ketat maksimal **7 karakter** alfanumerik (regex `^[a-zA-Z0-9]{1,7}$`).
+  * Tombol dadu randomizer di sebelah kanan input untuk generate nama instan.
+  * Avatar 2 karakter inisial otomatis (`w-12 h-12 rounded-full border-2 border-black`).
+* **Game Mode Selection:**
+  * Tab Segmented: Mode Offline vs Mode Online (MABAR).
+  * Mode Offline: Selector 3 tingkat AI (*Easy*, *Medium*, *Hard*) dan tombol mulai hijau mint.
+  * Mode Online: Tombol kuning Canary `Buat Room Baru` dan input 6-karakter `Kode Room` dengan tombol `Gabung`.
+* **Bottom Bar:** Tombol navigasi `MENU` dan `Aturan` (membuka `RulesModal`).
 
-### 2. Buttons
+---
 
-- **Primary Action (e.g., "SLAP / JALAN", "LEPAS", "MAINKAN"):** Electric Mint (`#10B981` / `#00D084`) or Canary Yellow (`#FFD000` / `#FFE600`) fill, uppercase `Space Grotesk` font, `3px solid #000000` border, `4px 4px 0px #000000` shadow.
-- **Destructive/Fold (e.g., "PAS", "TUTUP"):** Punchy Coral (`#FF3B30` / `#FF5A5F`) fill, white text, `3px solid #000000` border.
-- **Hover/Focus State:** Background shifts +5% brightness, no shadow change.
-- **Active State:** Transforms `translate(3px, 3px)` with shadow compressing to `1px 1px 0px #000000`.
+### 4.2 Layar 2: Ruang Tunggu MABAR (`WaitingRoomScreen`)
 
-### 3. Chips & Multipliers
+* **Header:** Bar hijau mint (`#10B981`, border-b 3px hitam) dengan tombol kembali dan judul `RUANG TUNGGU`.
+* **Banner Kode Room:** Banner kuning Canary (`#FFE600` / `#FFD000`, border 3px, shadow 4px) dengan kotak putih bersarang berisi teks `ROOM ID: #{roomCode}` dan tombol `SALIN` instan.
+* **Bar Telemetri (2 Kolom):**
+  * Kolom Kiri: Kartu putih menampilkan indikator kesiapan `X/Y PEMAIN SIAP`.
+  * Kolom Kanan: Kartu gelap (`#283044` teks putih) mengunci status bot `🔒 BOT: HARD`.
+* **Grid 4 Kursi Pemain:**
+  * Kartu profil masing-masing pemain dengan inisial avatar bulat, nama, status badge (`HOST`, `Siap`, `Menunggu`, atau `BOT`).
+* **Kontrol Footer:**
+  * Tombol primer hijau mint `Mulai Permainan` (hanya aktif jika minimal 2 pemain manusia berstatus `Siap`).
+  * Baris sekunder: Tombol putih `ATURAN` dan tombol merah `BUBARKAN MEJA` / `KELUAR`.
 
-- Rectangular or chamfered tags with `2px solid #000000`, `2px 2px 0px #000000` drop-shadow.
-- Fills indicate game status: Sky Cyan (`#00D4FF`) for pot value, Canary Yellow (`#FFD000`) for Spade trump, Coral (`#FF3B30`) for penalty points, Deep Maroon (`#8B0000`) for RT/RW community badges.
+---
 
-### 4. Input Fields & Chat Trays
+### 4.3 Layar 3: Meja Permainan Taktis (`GameplayScreen`)
 
-- Solid white input bar with `2px solid #000000` border, no default outline.
-- Active focus state: `box-shadow: 3px 3px 0px #000000`, background changes to pale mint tint (`#ECFDF5`).
-- Placeholder text in 60% muted black with mono-style brackets (e.g., `[ Masukkan pesan... ]`).
+* **Header Meja:** Bar putih bersih (`#FFFFFF`, border-b 3px hitam) memuat tombol hamburger menu (*Side Drawer*), teks ronde `RONDE {roundNumber}`, dan badge status As (`Belum Terbuka`, `As Rendah (1)`, `As Tinggi (15)`).
+* **PlayerBadge Area (3 Lawan):**
+  * Menampilkan avatar bulat 40px, nama pemain, status giliran berdenyut (*pulse ring*), rekor kumulatif `Kalah: Nx`, badge gelap `BOT` untuk bot AI, serta lencana marun `RT` / `RW` (`#8B0000`, border hitam 1.5px, shadow 1px) bagi pemegang status aktif.
+  * Privasi taktis: Jumlah sisa kartu lawan dan isi kartu tutup lawan dirahasiakan sepenuhnya.
+* **CentralBoard (Meja Kartu 4 Kolom):**
+  * Permukaan felt hijau gelap (`#0C693A`, border-2 border-black, shadow-inner) dengan 4 kolom lambang vertikal (`♠`, `♥`, `♣`, `♦`).
+  * Setiap kolom kartu menumpuk 3 slot kartu potret kompak (`aspect-[1/1.3]`, `h-[76px] sm:h-20`, `rounded-xl`, border 2.5px hitam, shadow `3px 3px 0px #000000`):
+    * Ujung Atas (z-10): Kartu tertinggi yang telah turun (background `#FFFFFF`).
+    * Kartu 7 Tengah (z-20): Kartu pembuka lambang (background `#FFE600`).
+    * Ujung Bawah (z-30): Kartu terendah yang telah turun (background `#FFFFFF`).
+  * **Anatomi 3 Titik Kartu Meja:**
+    * Sudut Kiri Atas: Indeks angka (`Space Grotesk`, `font-black`, 12px–14px).
+    * Pusat Tengah: Simbol lambang besar (18px–20px) dalam warna lambang flat.
+    * Sudut Kanan Bawah: Indeks angka sekunder tegak (*upright*, 10px–12px, 65% opacity).
+  * **Placeholder Lambang Belum Terbuka (`SuitPlaceholder`):** Slot berukuran identik dengan latar transparan gelap (`bg-black/20`, border 2px putih 15%) dan simbol lambang redup di tengah (85% opacity).
+* **PlayerInteractionDock (3-Tier Vertical Stack):**
+  * Baki luar berwarna abu-abu hangat / dock tray (`#EDEBE6`, border-t 3px hitam).
+  * **Tingkat 1 (Top Action Buttons):**
+    * Tombol `TUTUP`: Latar merah coral (`#FF5A5F` / `#FF4343`, border 3px hitam, shadow 3px). Terkunci jika kartu yang dipilih atau kartu tangan lainnya masih sah dimainkan (Anti-Bohong).
+    * Tombol `MAINKAN`: Latar hijau mint (`#00D084` / `#10B981`, border 3px hitam, shadow 3px). Aktif jika kartu terpilih sah dimainkan ke meja.
+  * **Tingkat 2 (Middle Hand Rack - 'KARTU TANGAN'):** Kontainer hijau tua pekat (`#1B4332`, border 2px hitam, shadow 2px) dengan header `KARTU TANGAN ({hand.length})` dan grid 2-baris tanpa scroll:
+    * Baris 1: `grid grid-cols-7 gap-1`, kartu 1–7.
+    * Baris 2: `grid grid-cols-6 gap-1 px-3 mt-1`, kartu 8–13.
+    * Format mini-card tangan: `h-12 sm:h-14`, sudut `rounded-md`, indeks kiri atas, lambang kanan bawah, dan ikon `🔑` di kanan atas untuk kartu 6 & 8. Highlight seleksi kuning Canary `#FFE600` dengan elevasi `-translate-y-2`.
+  * **Tingkat 3 (Bottom Folded Strip - 'KARTU TUTUP'):** Kontainer hijau tua pekat (`#1B4332`, border 2px hitam) dengan label `KARTU TUTUP`, badge penalti langsung (`Total: -{penalty} Poin`), dan deretan kartu tertutup mini yang dapat digulir horizontal.
+* **Side Drawer Menu:**
+  * Menampilkan informasi nama pemain, status koneksi online, telemetri latensi real-time (**`Ping: XX ms`**), tombol `Aturan Ringkas`, tombol **`PENGATURAN`** (`SettingsModal`), kotak info Room ID (`#{roomCode}`) dan durasi permainan (*Elapsed Timer* `MM:SS`), serta tombol `Keluar dari Permainan`.
 
-### 5. Tactical Scoreboard & Dialogue Overlays
+---
 
-- Modal overlays do not blur the play area. They drop down with a solid `#000000` border (`3px`) and intense offset shadow (`6px 6px 0px #000000`), filled with high-contrast panel colors.
-- Header bars within cards or modals are segmented with a solid black dividing line (`2px solid #000000`) and distinct background fill (e.g., Canary Yellow banner on white card).
+### 4.4 Layar 4: Papan Skor Akhir (`ScoreboardScreen`)
 
-### 6. Turn Timer HUD (Deprecated)
+* **Header & Subheader:** Bar hijau mint (`#10B981`, border-b 3px hitam) dengan judul `PAPAN SKOR` dan pill `#{roomCode}`. Subheader menampilkan nomor ronde dan status As terkunci.
+* **Leaderboard 1–4 ('RINCIAN KARTU PEMAIN'):**
+  * Terurut dari peringkat 1 (penalti terendah) hingga peringkat 4 (Juru Kunci / penalti tertinggi).
+  * Peringkat 1: Badge emas `1ST`, pill hijau `PEMENANG`, total penalti terendah.
+  * Peringkat 4: Pill merah `JURU KUNCI`, penalti tertinggi, tambahan `Kalah: Nx` (+1).
+  * Rincian kartu: Menampilkan strip kartu tutup (atau `✨ PERFECT CLEAR`), denda kartu 6/8 (+30 poin), dan badge animasi `RT!` / `RW!` bila memegang gelar.
+* **Kartu Status Eksklusif RT/RW (`STATUS RT / RW #{roomCode}`):**
+  * Terletak di bagian bawah layar: Box Neo-Brutalist tebal (`border-[3px] border-black shadow-[4px_4px_0px_#000000]`).
+  * Jika ada pemegang aktif: Avatar besar 48px, nama, tag pemain/bot, badge menyala `KEPALA RT` (`#8B0000`) atau `KEPALA RW` (`#8B0000`/`#FFE600`), serta rincian rekor kekalahan berturut-turut.
+  * Jika belum ada pemegang: Status netral 'BELUM ADA KEPALA RT / RW'.
+* **Footer:** Tombol utama kuning Canary `MAIN LAGI (REMATCH)` (mengarahkan ke Layar 5 Ritual Kocok Kartu) dan tombol sekunder putih `KEMBALI KE MENU`.
 
-- *Status:* Fitur Turn Timer HUD dan logika countdown giliran telah didepresiasi dan dihapus dari antarmuka permainan.
+---
 
-### 7. PlayerInteractionDock (3-Tier Vertical Stack)
+### 4.5 Layar 5: Ritual Kocok Kartu Manual 9 Titik (`ShuffleRitualScreen` - Juru Kunci)
 
-Komponen dock kontrol pemain di bagian bawah layar gameplay (`GameplayScreen`) dengan arsitektur 3 tingkat vertikal tanpa scroll:
+* **Header:** Hijau mint (`#10B981`, border 3px) dengan judul `RITUAL KOCOK KARTU`, info room, nomor ronde, dan badge timer hitung mundur 14 detik (`00:14`).
+* **Instruksi & Progres:** Panel putih memuat indikator putaran `PUTARAN {step} / 3`, bar progres 3-segmen, dan diagram referensi `TARGET POLA: TACTICAL-Z` (SVG mini 3x3 menghubungkan titik `[0, 2, 6, 8]`).
+* **Touchpad Interaktif 9 Titik:**
+  * Kanvas interaktif 3x3 dot dengan pelacak sentuhan jari/kursor mouse dan garis lintasan SVG tebal.
+  * Pemain wajib menyelesaikan gestur pola Z sebanyak 3 putaran.
+  * **Anti-Stall & Fallback:** Jika gagal 3 kali berturut-turut atau waktu 14 detik habis, sistem menyalakan peringatan `AUTO-RESHUFFLE AKTIF!` dan melanjutkan otomatis ke ronde berikutnya setelah 800ms demi mencegah pemain lain tertahan.
+  * Tombol manual `RESET` jika pemain salah menarik garis di tengah jalan.
 
-- **Tingkat 1 (Top Action Buttons):** Dua tombol aksi lebar penuh berdampingan (`grid grid-cols-2 gap-2`):
-  - Tombol `TUTUP`: Latar merah coral (`#FF5A5F`), dinonaktifkan jika pemain memiliki kartu yang valid dimainkan (Anti-Bohong).
-  - Tombol `MAINKAN`: Latar hijau mint (`#00D084`), aktif hanya jika kartu yang dipilih valid disambung ke meja.
-- **Tingkat 2 (Middle Hand Rack - 'KARTU TANGAN'):** Wadah hijau tua (`#1B4332`, border 2px hitam, shadow 2px) dengan header `KARTU TANGAN ({hand.length})` dan indikator status kartu valid. Memuat kartu tangan dalam 2 baris tetap:
-  - Baris 1: `hand.slice(0, 7)` dalam `grid grid-cols-7 gap-1`.
-  - Baris 2: `hand.slice(7, 13)` dalam `grid grid-cols-6 gap-1 px-3 mt-1`.
-  - Kartu tangan menggunakan komponen `PlayingCard` varian mini vertikal (`h-12 sm:h-14`) dengan indeks sudut kiri atas, lambang kanan bawah, dan ikon kunci `🔑` di kanan atas untuk kartu 6 & 8. Mendukung gestur tap untuk memilih (highlight kuning `#FFE600`) dan double-tap cepat jika diaktifkan di pengaturan.
-- **Tingkat 3 (Bottom Folded Strip - 'KARTU TUTUP'):** Bar horizontal ramping (`#1B4332`, border 2px hitam) dengan label `KARTU TUTUP`, badge penalti langsung (`Total: -{totalPenalty} Poin`), dan strip chip kartu tertutup yang dapat di-scroll horizontal.
+---
 
-### 8. ScoreboardScreen (Papan Skor & Rekor Komunitas RT/RW)
+### 4.6 Layar 6: Waiting Lounge Santai Kawan (`ShuffleRitualScreen` - Non-Juru Kunci)
 
-Halaman penutup ronde (`ScoreboardScreen`) bergaya Neo-Brutalist dengan integrasi telemetry komunitas:
+* **Banner Status:** Banner kuning mencolok bertuliskan `RITUAL WAJIB KALAH` dengan pesan hangat *"Santai kawan, {loserName} sedang mengocok kartu"*.
+* **Panggung Animasi:** Visual 3 kartu remi bergoyang acak dengan teks humor (*"Idih, idiiiiih....."*), disertai sinkronisasi timer 14 detik.
+* **Tracker Progres:** Bar 3-segmen `RITUAL GESTUR 9 TITIK` yang terhubung via WebSocket event `shuffle_progress` untuk memantau tahapan kocokan Juru Kunci secara langsung.
+* **Interaksi Sosial Ringan:**
+  * Tombol reaksi instan `☕ Sruput` pada daftar pemain.
+  * Tombol footer `👋 SEMANGATIN!` (mengirim dorongan semangat dan getaran taktis selama 1.5 detik ke seluruh meja via event `lounge_reaction`).
+  * Tombol footer `📜 LOG RONDE` (membuka `RoundLogModal`).
 
-- **Header:** Latar hijau mint (`#10B981`, border 3px bawah) dengan tombol kembali, judul `PAPAN SKOR`, dan pill kode room `#{roomCode}`.
-- **Subheader:** Baris telemetry dengan badge kiri `RONDE {roundNumber}` dan badge kanan status nilai As (`🔒 STATUS AS: {aceModeLabel}`).
-- **Bagian 1 ('RINCIAN KARTU PEMAIN'):** Daftar 4 kartu pemain kompak terurut dari peringkat 1 hingga 4. Setiap kartu menampilkan avatar inisial (`1ST` tag untuk peringkat 1), nama pemain, tag `ANDA` / `BOT`, pill peringkat (`PEMENANG`, `#2`, `#3`, `JURU KUNCI`), total penalti poin, rincian kartu yang ditutup/terbuka, akumulasi `Kalah: Nx`, dan badge animasi `RT!` atau `RW!` jika pemain memegang gelar.
-- **Bagian 2 ('STATUS RT / RW #{roomCode}'):** Kartu eksklusif Neo-Brutalist di bagian bawah scroll area (`border-[3px] border-black shadow-[4px_4px_0px_#000000]`):
-  - Jika pemegang aktif ada: Avatar besar (`w-12 h-12`), nama, tag ANDA/BOT, badge menyala `KEPALA RT` (`#8B0000`) atau `KEPALA RW` (`#8B0000`/`#FFE600`), dan ringkasan rekor ('Kalah 3x berturut-turut di room yang sama' atau 'Mencapai 2x status RT beruntun (6x Kalah Beruntun)').
-  - Jika belum ada pemegang: Kartu status netral 'BELUM ADA KEPALA RT / RW' ('Belum ada pemain yang kalah 3x berturut-turut di meja ini.').
-- **Fixed Footer:** Tombol primer kuning `MAIN LAGI (REMATCH)` (mengarahkan ke Layar 5 `ShuffleRitualScreen`) dan tombol sekunder putih `KEMBALI KE MENU`.
+---
 
-### 9. SettingsModal (Pengaturan Permainan)
+### 4.7 Modal 1: Panduan Aturan Permainan (`RulesModal`)
 
-Modal konfigurasi permainan yang diakses melalui tombol `PENGATURAN` pada `SideDrawer`:
+* **Header:** Kuning Canary (`#FFE600`, border-b 3px hitam) bertuliskan `ATURAN PERMAINAN 7-AN`.
+* **Isi Konten:** Rangkuman taktis dengan bullet points tebal:
+  1. Pembagian 13 kartu per pemain & auto-reshuffle jika $\ge$ 3 kartu angka 7.
+  2. Kartu 7 pembuka wajib diturunkan otomatis ke tengah meja.
+  3. Sambungan kartu sah ($N+1$ atau $N-1$) atau membuka 7 lainnya.
+  4. Aturan Anti-Bohong: Dilarang menutup kartu jika memiliki kartu sah di tangan.
+  5. State As (0 poin jika belum terbuka, 1 poin jika Low, 15 poin jika High).
+  6. Denda flat 30 poin untuk kartu kunci 6 dan 8 yang tertutup.
+  7. Penentuan pemenang berdasarkan akumulasi poin penalti kartu tertutup **terendah**.
+  8. Sistem rekor kekalahan komunitas RT (3x kalah berturut-turut) dan RW (6x kalah berturut-turut).
+* **Footer:** Tombol hijau mint `SAYA PAHAM`.
 
-- **Header:** Kuning mencolok (`#FFE600`, border 3px hitam) dengan judul `PENGATURAN PERMAINAN`.
-- **Toggle 1 (Efek Audio & Suara):** Switch on/off untuk audio latar dan efek suara kartu, tersimpan di `localStorage` (`sevens_settings_v1`).
-- **Toggle 2 (Tap 2 Kali Main / Tutup):** Switch on/off gestur double-tap untuk eksekusi langkah kartu cepat.
-- **Info Box & Action:** Kotak informasi versi aplikasi dan tombol hijau mint `SIMPAN & TUTUP` (`#00D084`).
+---
 
-### 10. ShuffleRitualScreen (Ritual Kocok Kartu & Waiting Lounge)
+### 4.8 Modal 2: Pengaturan Permainan (`SettingsModal`)
 
-Layar pasca-rematch (Layar 5) menggantikan countdown modal 3 detik:
+* **Header:** Kuning Canary (`#FFE600`, border-b 3px hitam) bertuliskan `PENGATURAN PERMAINAN`.
+* **Item Konfigurasi:**
+  * Toggle 1 (Efek Audio & Suara): Switch Neo-Brutalist on/off untuk efek audio kartu dan notifikasi giliran (`localStorage: sevens_settings_v1`).
+  * Toggle 2 (Tap 2 Kali Main / Tutup): Switch on/off untuk eksekusi langkah kartu cepat tanpa tombol dock.
+* **Footer:** Kotak versi build dan tombol hijau mint `SIMPAN & TUTUP` (`#00D084`).
 
-- **Cabang Juru Kunci (Kocok Kartu Manual):**
-  - Header hijau mint `RITUAL KOCOK KARTU` dengan telemetry room dan ronde.
-  - Kartu instruksi `KOCOK KARTU MANUAL`, indikator `PUTARAN {step} / 3`, dan progress bar 3 segmen.
-  - Diagram panduan pola `TARGET POLA: TACTICAL-Z` (mini 3x3 SVG pola titik `[0, 2, 6, 8]`) dan status tumpukan acakan (`33%` $\rightarrow$ `66%` $\rightarrow$ `100%`).
-  - **Touchpad Gestur 9 Titik:** Kanvas interaktif 3x3 dot dengan pelacak pointer/mouse/touch. Pemain wajib menghubungkan titik pola Z sebanyak 3 putaran. Jika salah 3 kali berturut-turut, sistem menyalakan feedback merah `AUTO-RESHUFFLE AKTIF!` dan melanjutkan otomatis ke ronde baru setelah 800ms.
-- **Cabang 3 Pemain Lainnya (Waiting Lounge "Santai Kawan"):**
-  - Banner kuning `RITUAL WAJIB KALAH` dengan pesan *"Santai kawan, {loserName} sedang mengocok kartu"*.
-  - Visualisasi animasi 3 kartu kocok (*"Idih, idiiiiih....."*) dan tracker 3 segmen yang melacak progres pengocokan kartu secara live.
-  - Daftar kondisi pemain meja dengan tombol reaksi instan `☕ Sruput`.
-  - Tombol footer: `👋 SEMANGATIN!` (efek visual dorongan semangat selama 1.5 detik) dan `📜 LOG RONDE` (membuka modal detail rekap ronde sebelumnya).
-- **Round Log Modal (`📜 LOG RONDE`):**
-  - Modal ringkasan pertandingan yang menampilkan kartu 7 pembuka ronde lalu, status As akhir, rincian kartu tangan tertutup, denda flat kartu 6/8, dan total penalti setiap pemain.
+---
+
+### 4.9 Modal 3: Peringatan Konfirmasi Kartu Kunci 6 & 8 (`KeyCardConfirmModal`)
+
+* **Trigger:** Muncul jika pemain hendak menutup kartu bernilai 6 atau 8 saat tidak memiliki langkah sah lainnya.
+* **Visual Peringatan:** Kotak merah cerah (`#FFDAD6` / `#BA1A1A`, border 3px hitam, shadow 6px) dengan ikon kunci besar `🔑`.
+* **Pesan Penegasan:** Menegaskan bahwa kartu 6 dan 8 merupakan kartu kunci dengan denda denda pasti **+30 Poin Denda** flat per kartu.
+* **Tombol Tindakan:**
+  * Tombol Merah Bahaya: `Tetap Tutup (+30 Poin)`.
+  * Tombol Putih Pembatalan: `Batal (Pilih Kartu Lain)`.
+
+---
+
+### 4.10 Modal 4: Cold Start Server Render & Rekap Log Ronde
+
+* **Cold Start Modal (`ColdStartModal`):**
+  * Muncul saat pemain membuat atau bergabung room ketika server Render sedang bangun (*waking up*).
+  * Panel Neo-Brutalist putih dengan progress bar bersegmen dan teks: *"Sedang menyiapkan server gratisan (~20 detik)..."*.
+  * Auto-retry WebSocket otomatis setiap 3 detik di latar belakang tanpa mengharuskan input ulang dari pengguna.
+* **Round Log Modal (`RoundLogModal` / `📜 LOG RONDE`):**
+  * Diakses dari waiting lounge Layar 6.
+  * Menampilkan rekap visual lengkap ronde sebelumnya: kartu 7 pembuka, status mode As akhir, rincian kartu tangan tertutup setiap pemain, denda kartu 6/8, dan total penalti akhir.
+
+---
+
+## 5. Komponen Usang / Didepresiasi (Deprecated Items)
+
+Demi mencegah kebingungan dalam implementasi teknis, komponen dan fitur berikut **telah didepresiasi dan dihapus permanen** dari basis kode Tujuhan Tactical:
+
+* **Turn Timer HUD & Circular Countdown:** Seluruh countdown visual melingkar pada giliran gameplay telah dihapus dari meja taktis.
+* **Input Chat Teks & Baki Pesan:** Tidak ada kolom chat teks atau baki pesan real-time untuk memangkas overhead server WebSocket dan moderasi konten.
+* **Pot / Taruhan Chip / Koin Perjudian:** Seluruh elemen taruhan, koin virtual, dan chip poker ditiadakan sepenuhnya (100% *zero-cost casual game*).
+* **Referensi Permainan Lain:** Seluruh istilah varian kartu di luar 7-an (seperti *Cangkulan*) dibersihkan agar dokumen terfokus murni pada *7-an (Tujuhan Tactical)*.
