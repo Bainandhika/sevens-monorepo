@@ -91,8 +91,12 @@ export const DICE_NICKNAME_PRESETS: readonly string[] = [
 export const MAX_NICKNAME_LENGTH = 7;
 export const ROOM_CODE_LENGTH = 6;
 export const RECONNECT_TIMEOUT_SECONDS = 30;
-export const TURN_TIME_LIMIT_SECONDS = 10;
-export const TURN_TIME_URGENT_SECONDS = 4;
+export const SHUFFLE_RITUAL_TIMEOUT_SECONDS = 14;
+
+/**
+ * Tactical Z-Pattern visual flow indices: [User (0), Opponent 2 (2), Opponent 4 (6), Opponent 3 (8)]
+ */
+export const TACTICAL_Z_PATTERN = [0, 2, 6, 8] as const;
 
 /**
  * Card Rank Definitions & Ranks
@@ -215,6 +219,17 @@ export const NEO_COLORS = {
   tableFelt: '#055A36',
   tableDark: '#033B23',
   tableLight: '#087346',
+  feltGreen: '#0C693A',
+  feltDark: '#08532E',
+  feltPlaceholder: '#0E5531',
+  dockTray: '#EDEBE6',
+  dockRack: '#1B4332',
+  rtRwMaroon: '#8B0000',
+  inverseSurface: '#283044',
+  secondaryContainer: '#FFD000',
+  foldCoral: '#FF5A5F',
+  errorDanger: '#BA1A1A',
+  errorContainer: '#FFDAD6',
 } as const;
 
 /**
@@ -225,7 +240,9 @@ export const NEO_SHADOWS = {
   sm: '2px 2px 0px #000000',
   card: '2.5px 2.5px 0px #000000',
   default: '3.5px 3.5px 0px #000000',
+  neo: '3px 3px 0px #000000',
   md: '4px 4px 0px #000000',
+  neoLg: '5px 5px 0px #000000',
   lg: '6px 6px 0px #000000',
 } as const;
 
@@ -242,4 +259,3 @@ export const AVATAR_COLORS: readonly string[] = [
   '#EC4899', // Pink
   '#3B82F6', // Blue
 ] as const;
-
