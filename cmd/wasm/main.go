@@ -105,7 +105,7 @@ func getBotMove(this js.Value, args []js.Value) any {
 }
 
 // calculateScore wraps engine scoring for JS.
-// Usage in JS: window.SevensWasm.calculateScore(playerId, handJsonStr, extraPenalties, [aceModeStr])
+// Usage in JS: window.SevensWasm.calculateScore(playerId, handJsonStr, [extraPenalties], [aceModeStr])
 func calculateScore(this js.Value, args []js.Value) any {
 	if len(args) < 2 {
 		return "{}"
@@ -118,13 +118,25 @@ func calculateScore(this js.Value, args []js.Value) any {
 	}
 
 	extra := 0
+	aceMode := engine.AceModeLockedNone
+	isTactical := false
+
 	if len(args) >= 3 {
-		extra = args[2].Int()
+		arg2 := args[2]
+		if arg2.Type() == js.TypeNumber {
+			extra = arg2.Int()
+			if len(args) >= 4 && args[3].String() != "" {
+				aceMode = engine.AceMode(args[3].String())
+				isTactical = true
+			}
+		} else if arg2.Type() == js.TypeString && arg2.String() != "" {
+			aceMode = engine.AceMode(arg2.String())
+			isTactical = true
+		}
 	}
 
 	var score engine.PlayerScoreDetail
-	if len(args) >= 4 && args[3].String() != "" {
-		aceMode := engine.AceMode(args[3].String())
+	if isTactical {
 		score = engine.CalculatePlayerFoldedScore(playerID, playerID, hand, aceMode)
 		score.OtherPenalties = extra
 		score.TotalPenalty += extra
@@ -186,6 +198,31 @@ func selectFoldCard(this js.Value, args []js.Value) any {
 	return string(res)
 }
 
+// calculateLeaderboard wraps engine.CalculateFinalLeaderboard for JS.
+// Usage in JS: window.SevensWasm.calculateLeaderboard(inputsJsonStr, [aceModeStr])
+func calculateLeaderboard(this js.Value, args []js.Value) any {
+	if len(args) < 1 {
+		return "{}"
+	}
+
+	var inputs []engine.PlayerScoreInput
+	if err := json.Unmarshal([]byte(args[0].String()), &inputs); err != nil {
+		return "{}"
+	}
+
+	aceMode := engine.AceModeLockedNone
+	if len(args) >= 2 && args[1].String() != "" {
+		aceMode = engine.AceMode(args[1].String())
+	}
+
+	leaderboard := engine.CalculateFinalLeaderboard(inputs, aceMode)
+	res, err := json.Marshal(leaderboard)
+	if err != nil {
+		return "{}"
+	}
+	return string(res)
+}
+
 func main() {
 	// Expose WebAssembly API to JavaScript window object
 	wasmObj := js.Global().Get("Object").New()
@@ -194,6 +231,7 @@ func main() {
 	wasmObj.Set("getBotMove", js.FuncOf(getBotMove))
 	wasmObj.Set("calculateScore", js.FuncOf(calculateScore))
 	wasmObj.Set("selectFoldCard", js.FuncOf(selectFoldCard))
+	wasmObj.Set("calculateLeaderboard", js.FuncOf(calculateLeaderboard))
 
 	js.Global().Set("SevensWasm", wasmObj)
 
