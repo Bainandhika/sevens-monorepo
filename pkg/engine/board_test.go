@@ -709,3 +709,147 @@ func TestKondisiRTRWExclusivityAndUpgrade(t *testing.T) {
 		t.Fatalf("Round 16: expected p2 streak=6, status=RW, got streak=%d, status=%s", streaks["p2"], status["p2"])
 	}
 }
+
+// TestDealBalancedFallbackDirectly tests the guaranteed balanced deal fallback where
+// exactly one 7 is dealt to each player, rendering >= 3 Sevens mathematically impossible.
+func TestDealBalancedFallbackDirectly(t *testing.T) {
+	rng := rand.New(rand.NewSource(42))
+
+	for sim := 0; sim < 20; sim++ {
+		hands := DealBalancedFallback(rng)
+		if len(hands) != 4 {
+			t.Fatalf("Expected 4 hands, got %d", len(hands))
+		}
+
+		totalCards := 0
+		cardSet := make(map[string]bool)
+
+		for pIdx, hand := range hands {
+			if len(hand) != 13 {
+				t.Fatalf("Simulation %d, player %d: expected 13 cards, got %d", sim, pIdx, len(hand))
+			}
+			sevensCount := 0
+			for _, card := range hand {
+				cardKey := card.String()
+				if cardSet[cardKey] {
+					t.Fatalf("Simulation %d: duplicate card %s found", sim, cardKey)
+				}
+				cardSet[cardKey] = true
+				if card.Rank == AnchorRank {
+					sevensCount++
+				}
+			}
+
+			if sevensCount != 1 {
+				t.Fatalf("Simulation %d, player %d: expected exactly 1 Seven in balanced fallback, got %d", sim, pIdx, sevensCount)
+			}
+			totalCards += len(hand)
+		}
+
+		if totalCards != 52 {
+			t.Fatalf("Simulation %d: expected 52 total cards, got %d", sim, totalCards)
+		}
+		if HasExcessSevens(hands) {
+			t.Fatalf("Simulation %d: HasExcessSevens returned true for balanced fallback deal", sim)
+		}
+	}
+}
+
+// TestAceModeAwareHardBotFold tests Hard bot fold choices influenced by AceMode:
+// - In AceModeHigh: Ace = 15 points, Rank 10 = 10 points -> Bot folds Rank 10
+// - In AceModeLockedNone: Ace = 0 points, Rank 10 = 10 points -> Bot folds Ace
+// - In AceModeLow: Ace = 1 point, Rank 2 = 2 points -> Bot folds Ace
+func TestAceModeAwareHardBotFold(t *testing.T) {
+	botEng := NewBotEngine()
+
+	// Scenario 1: Hand has Ace of Spades and 10 of Hearts
+	hand := []Card{
+		{Suit: Spades, Rank: AceRank}, // 1
+		{Suit: Hearts, Rank: 10},
+	}
+
+	// In HIGH mode: Ace is 15 pts, 10 is 10 pts.
+	// Hard bot must fold the 10 of Hearts to minimize penalty!
+	foldHigh, err := botEng.SelectFoldCard(hand, DifficultyHard, AceModeHigh)
+	if err != nil {
+		t.Fatalf("AceModeHigh fold error: %v", err)
+	}
+	if foldHigh.Rank != 10 {
+		t.Fatalf("Expected Hard bot to fold rank 10 (10 pts) in AceModeHigh, got rank %d (Ace is 15 pts)", foldHigh.Rank)
+	}
+
+	// In LOCKED_NONE mode: Ace is 0 pts, 10 is 10 pts.
+	// Hard bot must fold the Ace of Spades (0 pts) to minimize penalty!
+	foldNone, err := botEng.SelectFoldCard(hand, DifficultyHard, AceModeLockedNone)
+	if err != nil {
+		t.Fatalf("AceModeLockedNone fold error: %v", err)
+	}
+	if foldNone.Rank != AceRank {
+		t.Fatalf("Expected Hard bot to fold Ace (0 pts) in AceModeLockedNone, got rank %d", foldNone.Rank)
+	}
+
+	// Scenario 2: Hand has Ace of Clubs and 2 of Diamonds
+	handLow := []Card{
+		{Suit: Clubs, Rank: AceRank}, // 1 pt in LOW
+		{Suit: Diamonds, Rank: 2},    // 2 pts
+	}
+	foldLow, err := botEng.SelectFoldCard(handLow, DifficultyHard, AceModeLow)
+	if err != nil {
+		t.Fatalf("AceModeLow fold error: %v", err)
+	}
+	if foldLow.Rank != AceRank {
+		t.Fatalf("Expected Hard bot to fold Ace (1 pt) in AceModeLow, got rank %d", foldLow.Rank)
+	}
+}
+
+// TestLeaderboardDeterministicTieBreaking tests that tied TotalPenalty scores
+// are deterministically resolved by ascending SeatIndex.
+func TestLeaderboardDeterministicTieBreaking(t *testing.T) {
+	// All 4 players have identical 10-point penalties
+	inputs := []PlayerScoreInput{
+		{
+			PlayerID:    "p_seat3",
+			PlayerName:  "Seat 3",
+			SeatIndex:   3,
+			FoldedCards: []Card{{Suit: Spades, Rank: 10}},
+		},
+		{
+			PlayerID:    "p_seat1",
+			PlayerName:  "Seat 1",
+			SeatIndex:   1,
+			FoldedCards: []Card{{Suit: Hearts, Rank: 10}},
+		},
+		{
+			PlayerID:    "p_seat0",
+			PlayerName:  "Seat 0",
+			SeatIndex:   0,
+			FoldedCards: []Card{{Suit: Clubs, Rank: 10}},
+		},
+		{
+			PlayerID:    "p_seat2",
+			PlayerName:  "Seat 2",
+			SeatIndex:   2,
+			FoldedCards: []Card{{Suit: Diamonds, Rank: 10}},
+		},
+	}
+
+	leaderboard := CalculateFinalLeaderboard(inputs, AceModeLockedNone)
+
+	p0 := leaderboard["p_seat0"]
+	p1 := leaderboard["p_seat1"]
+	p2 := leaderboard["p_seat2"]
+	p3 := leaderboard["p_seat3"]
+
+	if p0.RankPosition != 1 || !p0.IsWinner {
+		t.Fatalf("Expected Seat 0 to win tie-breaker with RankPosition 1, got %+v", p0)
+	}
+	if p1.RankPosition != 2 {
+		t.Fatalf("Expected Seat 1 to have RankPosition 2, got %+v", p1)
+	}
+	if p2.RankPosition != 3 {
+		t.Fatalf("Expected Seat 2 to have RankPosition 3, got %+v", p2)
+	}
+	if p3.RankPosition != 4 || !p3.IsJuruKunci {
+		t.Fatalf("Expected Seat 3 to be Juru Kunci with RankPosition 4, got %+v", p3)
+	}
+}
