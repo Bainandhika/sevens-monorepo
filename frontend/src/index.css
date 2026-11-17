@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global CSS classes: .nb-border, .nb-border-3, .neo-box-shadow, .neo-box-shadow-sm, .neo-box-shadow-lg, .neo-box-shadow-card, .timer-alert, .animate-idle, .animate-slot-landed, .badge-pop, .pt-safe, .pb-safe */
+/* Global CSS classes: .nb-border, .nb-border-3, .neo-box-shadow, .neo-box-shadow-sm, .neo-box-shadow-lg, .neo-box-shadow-card, .animate-idle, .animate-idle-delayed, .animate-slot-landed, .badge-pop, .pt-safe, .pb-safe, .custom-scroll, .suit-placeholder */
 
 @layer base {
   :root {
@@ -69,11 +69,13 @@
   }
 
   /* Neo-Brutalist Border Utilities */
-  .nb-border {
+  .nb-border,
+  .border-neo {
     border: 2.5px solid #000000;
   }
 
-  .nb-border-3 {
+  .nb-border-3,
+  .border-neo-thick {
     border: 3px solid #000000;
   }
 
@@ -94,6 +96,28 @@
     box-shadow: 2.5px 2.5px 0px #000000;
   }
 
+  /* Board Suit Slot Cutouts */
+  .suit-placeholder {
+    box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Custom Slim Scrollbar for card tray */
+  .custom-scroll::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  .custom-scroll::-webkit-scrollbar-track {
+    background: #dfdcd5;
+    border-radius: 4px;
+  }
+
+  .custom-scroll::-webkit-scrollbar-thumb {
+    background: #555555;
+    border-radius: 4px;
+    border: 1px solid #000;
+  }
+
   /* User Select None Helper */
   .user-select-none {
     user-select: none;
@@ -102,17 +126,6 @@
 }
 
 /* Micro-Animation Keyframes from Google Stitch & DESIGN.md */
-
-@keyframes timer-urgency {
-  0%, 100% {
-    transform: scale(1);
-    background-color: #FF4343;
-  }
-  50% {
-    transform: scale(1.06);
-    background-color: #FF1A1A;
-  }
-}
 
 @keyframes idle-breathe {
   0%, 100% {
@@ -153,12 +166,12 @@
 }
 
 /* Micro-Animation Utility Classes */
-.timer-alert {
-  animation: timer-urgency 0.8s ease-in-out infinite;
-}
-
 .animate-idle {
   animation: idle-breathe 2.4s ease-in-out infinite;
+}
+
+.animate-idle-delayed {
+  animation: idle-breathe 2.4s ease-in-out 0.8s infinite;
 }
 
 .animate-slot-landed {
