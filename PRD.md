@@ -116,9 +116,13 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
 * **Ritual Kocok Kartu Manual Juru Kunci (9 Titik Interaktif):**
   * Pemain yang menempati peringkat ke-4 (Juru Kunci / penalti tertinggi) wajib melakukan ritual mengocok kartu manual melalui touchpad interaktif 9 titik berpola "TACTICAL-Z" (`[0, 2, 6, 8]`) sebanyak 3 putaran.
   * Deteksi pola dilengkapi feedback visual garis lintasan SVG. Jika pemain melakukan kesalahan gestur sebanyak 3 kali berturut-turut, sistem otomatis mengaktifkan *auto-reshuffle* untuk kelancaran jalannya permainan.
+  * **Batas Waktu & Anti-Stall Fallback (Countdown 14 Detik):** Layar dilengkapi timer hitung mundur 14 detik (`00:14`). Jika waktu habis sebelum 3 putaran selesai atau pemain tidak aktif/terputus, sistem secara otomatis mengeksekusi *auto-reshuffle* dan melanjutkan permainan ke ronde baru agar pemain lain tidak tertahan.
 * **Ruang Tunggu Interaktif (Waiting Lounge untuk 3 Pemain Lainnya):**
-  * Tiga pemain yang tidak kalah berada di ruang tunggu santai yang memvisualisasikan animasi dan progres kocokan kartu Juru Kunci secara real-time.
-  * Menyediakan tombol interaksi sosial ringan tanpa fitur chat teks: tombol reaksi `☕ Sruput` dan tombol pemicu semangat `👋 SEMANGATIN!`.
+  * Tiga pemain yang tidak kalah berada di ruang tunggu santai yang memvisualisasikan animasi dan progres kocokan kartu Juru Kunci secara real-time (`shuffle_progress`).
+  * Telemetri countdown timer 14 detik disinkronkan secara real-time dengan layar Juru Kunci.
+  * **Interaksi Sosial Ringan (Reaksi Instan):** Tanpa fitur chat teks, pemain dapat mengirimkan reaksi cepat melalui WebSocket:
+    * Tombol reaksi `☕ Sruput` (menampilkan gelembung reaksi minum kopi santai pada status pemain).
+    * Tombol pemicu semangat `👋 SEMANGATIN!` (menyalakan efek dorongan semangat dan getaran taktis selama 1.5 detik ke seluruh meja).
   * Menyediakan tombol akses modal `📜 LOG RONDE` untuk meninjau riwayat kartu pembuka, status As, dan rincian penalti ronde sebelumnya.
 
 ### F5. Papan Skor Transparan & Rematch Cepat (Rekor Komunitas RT/RW)
@@ -136,10 +140,10 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
 
 ### Layar 1: Lobi Utama
 
-* **Header & Identitas:** Bar header hijau mint (`#00D084`, border hitam 3px) dengan logo kartu 4-lambang angka 7, judul `MENU`, dan tombol toggle audio di sisi kanan (`audioEnabled` / suara aktif).
-* **Hero Banner:** Banner hijau mint (`#00D084`, border 3px, shadow 4px) dengan judul besar `7-an`, kapsul teks putih `Tentukan tujuanmu!`, serta ilustrasi kartu 7 miring artistik di kanan.
+* **Header & Identitas:** Bar header hijau mint (`#00D084` / `#10B981`, border hitam 3px) dengan logo kartu 4-lambang angka 7, judul `MENU`, dan tombol toggle audio di sisi kanan (`audioEnabled` / suara aktif).
+* **Hero Banner:** Banner hijau mint (`#00D084` / `#10B981`, border 3px, shadow 4px) dengan judul besar `7-an`, kapsul teks putih `Tentukan tujuanmu!`, serta ilustrasi kartu 7 miring artistik di kanan.
 * **Form Profil Guest:**
-  * Kolom input *Nickname* dibatasi maksimal **7 karakter** alfanumerik.
+  * Kolom input *Nickname* dibatasi maksimal **7 karakter** alfanumerik (regex: `^[a-zA-Z0-9]{1,7}$`). *Catatan:* Pada prototipe HTML Stitch terdapat atribut `maxlength="10"`, namun PRD dan implementasi aplikasi mengunci validasi ketat maksimal 7 karakter agar keselarasan badge profil Neo-Brutalist dan format avatar 2 karakter tetap rapi dan tidak meluap (*overflow*).
   * **Tombol Dadu (Randomizer):** Tombol di samping input nama untuk mengacak nama guest secara instan dari preset lokal (contoh: `Sekop07`, `Wajik99`, `Ksatria`, `Taktik7`).
   * **Tanpa Avatar Chooser:** Avatar profil digenerate otomatis dari 2 karakter inisial nama pemain (misal: `Sekop07` $\rightarrow$ `S7`).
 * **Pilihan Mode Permainan:**
@@ -167,21 +171,23 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
 ### Layar 3: Meja Permainan Taktis (Gameplay)
 
 * **Header Meja:**
-  * Bar putih bersih dengan tombol *Side Drawer* menu burger, judul `RONDE {roundNumber}`, dan indikator status As (`Belum Terbuka`, `As Rendah (1)`, `As Tinggi (15)`).
+  * Bar putih bersih (`#FFFFFF`, border-b 3px hitam) dengan tombol *Side Drawer* menu burger, judul `RONDE {roundNumber}`, dan indikator status As (`Belum Terbuka`, `As Rendah (1)`, `As Tinggi (15)`).
 * **Area Pemain (3 Lawan & PlayerBadge):**
   * Menampilkan avatar inisial, nama pemain, status giliran aktif (*pinging border*), rekor kekalahan kumulatif (`Kalah: Nx`), tag gelap `BOT` untuk bot AI, serta badge eksklusif `RT` / `RW` berwarna merah marun tua (`#8B0000`, border hitam 1.5px, shadow 1px) bagi pemegang status aktif di room.
   * **Privasi Taktis:** Untuk mempertahankan ketegangan dan strategi membaca kartu, sisa jumlah kartu maupun isi kartu tutup milik lawan **tidak ditampilkan** di meja.
 * **Kolom Kartu Meja (Central Board):**
-  * Terdiri dari 4 kolom vertikal representatif (`♠ Sekop`, `♥ Hati`, `♣ Keriting`, `♦ Wajik`).
-  * Setiap kolom kartu menumpuk secara vertikal dengan overlap (`-space-y-6` sm:`-space-y-7`, z-index bertingkat 10, 20, 30) menampilkan 3 slot kartu persegi-potret kompak (`h-[76px] sm:h-20`, sudut membulat `rounded-xl`, garis tepi `2.5px solid #000000`, bayangan `3px 3px 0px #000000`):
+  * Terdiri dari 4 kolom vertikal representatif (`♠ Sekop`, `♥ Hati`, `♣ Keriting`, `♦ Wajik`) di atas felt hijau meja (`#0C693A`).
+  * Setiap kolom kartu menumpuk secara vertikal dengan overlap (`-space-y-6` sm:`-space-y-7`, z-index bertingkat 10, 20, 30) menampilkan 3 slot kartu rasio potret kompak (`aspect-[1/1.3]`, `h-[76px] sm:h-20`, sudut membulat `rounded-xl`, garis tepi `2.5px solid #000000`, bayangan `3px 3px 0px #000000`):
     1. **Kartu Ujung Atas (z-10):** Nilai tertinggi yang telah turun di atas 7 (misal: 8, 9, dst. background putih `#FFFFFF`).
     2. **Kartu 7 Tengah (z-20):** Kartu jangkar pembuka lambang (background kuning `#FFE600`).
     3. **Kartu Ujung Bawah (z-30):** Nilai terendah yang telah turun di bawah 7 (misal: 6, 5, dst. background putih `#FFFFFF`).
-  * **Slot Placeholder Lambang:** Lambang yang belum dibuka menampilkan slot placeholder berukuran identik dengan latar gelap semi-transparan (`bg-black/20`, `border-2 border-white/15`) dan ikon lambang di tengah.
+  * **Anatomi 3 Titik Kartu Meja (3-Point Index):** Indeks angka kiri atas (`Space Grotesk font-black`), simbol lambang tengah (`18px–20px`), dan indeks angka kanan bawah tegak (*upright* `65%` opacity).
+  * **Slot Placeholder Lambang:** Lambang yang belum dibuka menampilkan slot placeholder berukuran identik dengan latar gelap semi-transparan (`bg-black/20`, `border-2 border-white/15`) dan ikon lambang di tengah (`85%` opacity).
 * **Dock Interaksi Pemain Bawah (PlayerInteractionDock - 3-Tier Vertical Stack):**
+  * Kontainer dock luar berlatar abu-abu hangat / dock tray (`#EDEBE6`, border-t 3px hitam) membungkus 3 tingkat vertikal tanpa scroll:
   * **Tingkat 1 (Atas - Tombol Aksi):** Dua tombol berdampingan selebar layar (`grid grid-cols-2 gap-2`):
-    * Tombol **`TUTUP`** (merah coral `#FF5A5F` / `#FF4343`). Terkunci jika kartu yang dipilih atau kartu tangan lainnya masih sah dimainkan (Anti-Bohong).
-    * Tombol **`MAINKAN`** (hijau mint `#00D084`). Aktif jika kartu terpilih sah dimainkan ke meja.
+    * Tombol **`TUTUP`** (merah coral `#FF5A5F` / `#FF4343`, border 3px hitam, shadow 3px). Terkunci jika kartu yang dipilih atau kartu tangan lainnya masih sah dimainkan (Anti-Bohong).
+    * Tombol **`MAINKAN`** (hijau mint `#00D084` / `#10B981`, border 3px hitam, shadow 3px). Aktif jika kartu terpilih sah dimainkan ke meja.
   * **Tingkat 2 (Tengah - Rak Kartu Tangan):** Kontainer hijau tua pekat (`#1B4332`, border 2px hitam, shadow 2px) dengan header `KARTU TANGAN ({hand.length})` dan grid 2-baris tanpa scroll:
     * Baris 1 (`grid-cols-7 gap-1`): Kartu tangan 1–7 berformat mini-card vertikal (`h-12 sm:h-14`, indeks kiri atas, simbol kanan bawah, ikon `🔑` kanan atas untuk kartu 6 & 8).
     * Baris 2 (`grid-cols-6 gap-1 px-3 mt-1`): Kartu tangan 8–13.
@@ -190,7 +196,7 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
 * **Modal Konfirmasi Kartu Kunci (6 & 8):**
   * Jika pemain hendak menutup kartu 6 atau 8, muncul modal peringatan risiko tinggi bergaya Neo-Brutalism yang menegaskan denda flat `+30 Poin Denda`, dengan pilihan `Tetap Tutup (+30 Poin)` atau `Batal (Pilih Kartu Lain)`.
 * **Side Drawer Menu:**
-  * Menampilkan informasi nama pemain, status online, indikator latensi real-time (**`Ping: XX ms`**), tombol `Aturan Ringkas`, tombol **`PENGATURAN`** (membuka `SettingsModal` audio & preferensi kontrol), kotak info Room ID (`#{roomCode}`) dan durasi match (*Elapsed Timer* `MM:SS`), serta tombol `Keluar dari Permainan`. Opsi 'Papan Skor Sementara' ditiadakan.
+  * Menampilkan informasi nama pemain, status online terintegrasi, indikator latensi real-time (**`Ping: XX ms`**), tombol `Aturan Ringkas`, tombol **`PENGATURAN`** (membuka `SettingsModal` audio & preferensi kontrol), kotak info Room ID (`#{roomCode}`) dan durasi match (*Elapsed Timer* `MM:SS`), serta tombol `Keluar dari Permainan`. Opsi 'Papan Skor Sementara' ditiadakan.
 
 ### Layar 4: Papan Skor Akhir (Scoreboard)
 
@@ -213,16 +219,16 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
 
 * **Menggantikan Countdown Modal 3 Detik:** Memberikan pengalaman interaktif berbobot taktis bagi pemain kalah dan ruang santai interaktif bagi pemain lainnya.
 * **Cabang A (Untuk Pemain Juru Kunci - Layar Kocok Kartu Manual):**
-  * Header hijau mint (`#10B981`) bertuliskan `RITUAL KOCOK KARTU` dengan telemetry room dan nomor ronde berikutnya.
+  * Header hijau mint (`#10B981`) bertuliskan `RITUAL KOCOK KARTU` dengan telemetry room dan nomor ronde berikutnya, disertai badge timer 14 detik (`00:14`).
   * Frame instruksi `KOCOK KARTU MANUAL` dengan indikator putaran `PUTARAN {step} / 3` dan bar progres 3-segmen.
   * Pita informasi tengah: Komponen `TARGET POLA: TACTICAL-Z` (diagram 3x3 SVG pola `[0, 2, 6, 8]`) dan `STATUS TUMPUKAN` animasi kartu acak (`33%` $\rightarrow$ `66%` $\rightarrow$ `100%`).
   * **Touchpad Gestur 9 Titik:** Area kanvas interaktif 3x3 dot dengan pelacak pointer/mouse/touch dan garis lintasan SVG:
     * Pemain wajib menghubungkan titik pola Z (`0 -> 2 -> 6 -> 8`) sebanyak 3 putaran berturut-turut untuk menyelesaikan pengocokan kartu.
-    * Setiap kesalahan menggambar pola menambah `failCount`. Jika salah 3 kali berturut-turut (`failCount >= 3`), sistem menyalakan peringatan `AUTO-RESHUFFLE AKTIF!` dan otomatis melanjutkan ke ronde berikutnya setelah 800ms demi mencegah *soft-lock*.
+    * Setiap kesalahan menggambar pola menambah `failCount`. Jika salah 3 kali berturut-turut (`failCount >= 3`) atau batas waktu 14 detik habis, sistem menyalakan peringatan `AUTO-RESHUFFLE AKTIF!` dan otomatis melanjutkan ke ronde berikutnya setelah 800ms demi mencegah *soft-lock* dan stalling.
     * Dilengkapi tombol `RESET` manual jika garis salah di tengah jalan.
 * **Cabang B (Untuk 3 Pemain Lainnya - Layar Waiting Lounge "Santai Kawan"):**
   * Banner kuning mencolok bertuliskan `RITUAL WAJIB KALAH` dan pesan bersahabat: *"Santai kawan, {loserName} sedang mengocok kartu"*.
-  * Menampilkan profil Juru Kunci ronde lalu beserta total penaltinya dan panggung animasi 3 kartu kocok (*"Idih, idiiiiih....."*).
+  * Menampilkan profil Juru Kunci ronde lalu beserta total penaltinya, timer sinkron 14 detik, dan panggung animasi 3 kartu kocok (*"Idih, idiiiiih....."*).
   * Bar progres 3-segmen `RITUAL GESTUR 9 TITIK` yang melacak tahapan kocokan Juru Kunci secara langsung (`Pola 1/3` $\rightarrow$ `Pola 2/3` $\rightarrow$ `Pola 3/3`, atau simulasi bot ~4.5 detik jika Juru Kunci adalah AI).
   * Daftar kondisi 3 pemain di meja dengan tombol reaksi instan `☕ Sruput`.
   * Tombol aksi bawah: Tombol `👋 SEMANGATIN!` (menyalakan efek dorongan semangat ke meja selama 1.5 detik) dan tombol `📜 LOG RONDE` (membuka modal detail rekap ronde sebelumnya).
@@ -237,6 +243,9 @@ Antarmuka visual mengusung gaya **Neo-Brutalism ("Tujuhan Tactical")** yang bera
 * **In-Memory Room Garbage Collection (Room Reaper):** Goroutine *ticker* periodik yang berjalan setiap 60 detik untuk menghapus data room dari RAM jika seluruh pemain telah keluar atau tidak ada aktivitas selama lebih dari 5 menit.
 * **Pengendalian Runtime Memory Go (`GOMEMLIMIT`):** Mengatur env container `GOMEMLIMIT=420MiB` dan `GOGC=80` agar Garbage Collector Go bekerja lebih agresif sebelum menyentuh batas keras 512 MB di Render, mencegah *OOM kill*.
 * **Heartbeat Ping/Pong:** Interval 30 detik untuk memutus *dead socket* dari browser yang ditutup mendadak.
+* **Kontrak Event WebSocket Tambahan:**
+  * `shuffle_progress`: Dikirim oleh klien Juru Kunci (atau disimulasikan server untuk bot) saat menyelesaikan putaran pola (`{ "type": "shuffle_progress", "step": 1|2|3, "totalSteps": 3 }`), dibroadcast ke seluruh pemain di waiting lounge.
+  * `lounge_reaction`: Dikirim oleh pemain di waiting lounge (`{ "type": "lounge_reaction", "reaction": "sruput" | "cheer", "senderId": "string" }`), dibroadcast instan ke seluruh pemain di room untuk memicu animasi visual/suara tanpa membebani state mesin game.
 
 ---
 
