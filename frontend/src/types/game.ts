@@ -13,6 +13,8 @@ export type BotDifficulty = 'easy' | 'medium' | 'hard';
 
 export type CommunityStatus = 'NONE' | 'RT' | 'RW';
 
+export type RoomStatus = 'waiting' | 'playing' | 'shuffling' | 'finished';
+
 export type ScreenName = 'lobby' | 'waiting_room' | 'gameplay' | 'scoreboard' | 'shuffling';
 
 export type ScreenRoute = ScreenName;
@@ -89,7 +91,7 @@ export type ScoreDetail = PlayerScoreDetail;
 export interface RoomState {
   id: string;
   mode: 'offline' | 'online';
-  status: 'waiting' | 'playing' | 'finished';
+  status: 'waiting' | 'playing' | 'shuffling' | 'finished';
   roundNumber: number;
   turnNumber: number;
   currentTurn: string;
@@ -100,6 +102,28 @@ export interface RoomState {
   scores?: Record<string, PlayerScoreDetail>;
   rtRwHolderId?: string;
   rtRwStatus?: CommunityStatus;
+  shufflerId?: string;
+}
+
+export interface ShuffleProgressPayload {
+  step: 1 | 2 | 3;
+  totalSteps: 3;
+  shufflerId?: string;
+  autoReshuffle?: boolean;
+}
+
+export interface LoungeReactionPayload {
+  reaction: 'sruput' | 'cheer';
+  senderId: string;
+  senderName?: string;
+}
+
+export interface RoundLogSnapshot {
+  roundNumber: number;
+  openerSuit: Suit;
+  aceMode: AceMode;
+  scores: Record<string, PlayerScoreDetail>;
+  players: Player[];
 }
 
 export type ModalType =
@@ -118,4 +142,3 @@ export interface ToastState {
   icon: string;
   message: string;
 }
-
