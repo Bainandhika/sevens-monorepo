@@ -8,12 +8,12 @@ export interface SideDrawerProps {
   playerName: string;
   playerInitials: string;
   isOnline: boolean;
+  isHost?: boolean;
   pingMs: number;
   elapsedSeconds?: number;
   onClose: () => void;
   onOpenRules: () => void;
   onOpenSettings?: () => void;
-  onOpenTempScoreboard?: () => void;
   onExitToLobby: () => void;
 }
 
@@ -31,6 +31,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
   playerName,
   playerInitials,
   isOnline,
+  isHost = false,
   pingMs,
   elapsedSeconds,
   onClose,
@@ -116,7 +117,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
       <aside
         className={clsx(
           'relative w-[82%] max-w-[340px] h-full bg-[#FAF8FF] border-r-[3px] border-black z-50',
-          'flex flex-col justify-between shadow-[6px_0px_0px_#000000] overflow-y-auto select-none',
+          'flex flex-col justify-between shadow-[6px_0px_0px_#000000] overflow-y-auto custom-scroll select-none',
           'animate-in slide-in-from-left duration-200'
         )}
         onClick={(e) => e.stopPropagation()}
@@ -128,7 +129,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
             {/* Top bar with brand tag & close button */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-1.5">
-                <span className="font-display font-black text-sm tracking-tight bg-black text-white px-2 py-0.5 rounded border border-black shadow-[1px_1px_0px_#000000]">
+                <span className="font-display font-black text-sm tracking-tight bg-black text-white px-2 py-0.5 rounded border border-black shadow-[1px_1px_0px_#000000] whitespace-nowrap">
                   7-an
                 </span>
                 <span className="font-display font-black text-xs text-black uppercase tracking-wider">
@@ -141,7 +142,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
                 type="button"
                 onClick={onClose}
                 aria-label="Tutup Menu"
-                className="w-8 h-8 rounded-lg bg-white border-2 border-black flex items-center justify-center font-display font-black text-sm shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-transform hover:bg-neutral-100 cursor-pointer"
+                className="w-8 h-8 rounded-lg bg-white border-2 border-black flex items-center justify-center font-display font-black text-sm shadow-[2px_2px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] transition-transform hover:bg-neutral-100 cursor-pointer"
               >
                 ✕
               </button>
@@ -149,7 +150,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
 
             {/* Player Profile Card inside Header */}
             <div className="bg-white rounded-xl border-2 border-black p-2.5 shadow-[2px_2px_0px_#000000] flex items-center gap-2.5">
-              <div className="w-11 h-11 rounded-xl bg-[#00D084] border-2 border-black flex items-center justify-center font-display font-black text-base text-black shrink-0 shadow-[1px_1px_0px_#000000]">
+              <div className="w-11 h-11 rounded-full bg-[#FFE600] border-2 border-black flex items-center justify-center font-display font-black text-base text-black shrink-0 shadow-[1px_1px_0px_#000000]">
                 {initials}
               </div>
 
@@ -158,10 +159,10 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
                   <span className="font-display font-black text-xs text-black truncate leading-tight">
                     {playerName || 'Pemain'}
                   </span>
-                  <span className="text-[10px] text-neutral-500 font-bold">(Anda)</span>
+                  <span className="text-[10px] text-neutral-500 font-bold shrink-0">(Anda)</span>
                 </div>
 
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                   {isOnline ? (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#00D084] border border-black text-[9px] font-display font-black text-black shadow-[1px_1px_0px_#000000] uppercase tracking-wider">
                       <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
@@ -171,6 +172,11 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-neutral-100 border border-black text-[9px] font-display font-black text-black shadow-[1px_1px_0px_#000000] uppercase tracking-wider">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                       OFFLINE AI
+                    </span>
+                  )}
+                  {isHost && (
+                    <span className="bg-emerald-400 text-black text-[9px] font-display font-black px-1.5 py-0.5 rounded border border-black shadow-[1px_1px_0px_#000000] uppercase tracking-wider">
+                      HOST
                     </span>
                   )}
                 </div>
@@ -184,7 +190,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
             <button
               type="button"
               onClick={handleOpenRules}
-              className="w-full text-left bg-white rounded-xl border-2 border-black p-2.5 flex items-center gap-2.5 shadow-[2px_2px_0px_#000000] hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer group"
+              className="w-full text-left bg-white rounded-xl border-2 border-black p-2.5 flex items-center gap-2.5 shadow-[2px_2px_0px_#000000] hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] transition-all cursor-pointer group"
             >
               <div className="w-9 h-9 rounded-lg bg-[#FFE600] border-2 border-black flex items-center justify-center shrink-0 shadow-[1px_1px_0px_#000000] text-lg">
                 📜
@@ -211,7 +217,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
             <button
               type="button"
               onClick={handleOpenSettings}
-              className="w-full text-left bg-white rounded-xl border-2 border-black p-2.5 flex items-center gap-2.5 shadow-[2px_2px_0px_#000000] hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer group"
+              className="w-full text-left bg-white rounded-xl border-2 border-black p-2.5 flex items-center gap-2.5 shadow-[2px_2px_0px_#000000] hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] transition-all cursor-pointer group"
             >
               <div className="w-9 h-9 rounded-lg bg-[#E2E8F0] border-2 border-black flex items-center justify-center shrink-0 shadow-[1px_1px_0px_#000000] text-lg">
                 ⚙️
@@ -258,7 +264,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
             <button
               type="button"
               onClick={handleExitToLobby}
-              className="w-full py-2.5 px-3 bg-[#FF4343] hover:bg-[#ea3a3a] rounded-xl border-2 border-black shadow-[2px_2px_0px_#000000] flex items-center justify-center gap-2 text-white font-display font-black text-xs uppercase tracking-wider hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer mt-1 select-none"
+              className="w-full py-2.5 px-3 bg-[#FF4343] hover:bg-[#ea3a3a] rounded-xl border-2 border-black shadow-[2px_2px_0px_#000000] flex items-center justify-center gap-2 text-white font-display font-black text-xs uppercase tracking-wider hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] transition-all cursor-pointer mt-1 select-none"
               id="btn-exit-game"
             >
               <svg
