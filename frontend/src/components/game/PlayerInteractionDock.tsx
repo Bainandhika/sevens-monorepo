@@ -164,11 +164,11 @@ export const PlayerInteractionDock: React.FC<PlayerInteractionDockProps> = ({
             title={foldTitle}
             aria-label={foldButtonLabel}
             className={clsx(
-              'w-full py-2.5 sm:py-3 rounded-xl border-2 border-black font-display font-black text-sm sm:text-base uppercase tracking-wider transition-all duration-150',
+              'w-full py-2.5 sm:py-3 rounded-xl border-[3px] border-black font-display font-black text-sm sm:text-base uppercase tracking-wider transition-all duration-150',
               'bg-[#FF5A5F] text-white',
               isFoldDisabled
                 ? 'opacity-50 cursor-not-allowed shadow-none'
-                : 'shadow-[2px_2px_0px_#000000] hover:brightness-105 active:translate-x-0.5 active:translate-y-0.5'
+                : 'shadow-[3px_3px_0px_#000000] hover:brightness-105 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000]'
             )}
           >
             TUTUP
@@ -182,11 +182,11 @@ export const PlayerInteractionDock: React.FC<PlayerInteractionDockProps> = ({
             title={playTitle}
             aria-label={playButtonLabel}
             className={clsx(
-              'w-full py-2.5 sm:py-3 rounded-xl border-2 border-black font-display font-black text-sm sm:text-base uppercase tracking-wider transition-all duration-150',
+              'w-full py-2.5 sm:py-3 rounded-xl border-[3px] border-black font-display font-black text-sm sm:text-base uppercase tracking-wider transition-all duration-150',
               'bg-[#00D084] text-black',
               isPlayDisabled
                 ? 'opacity-50 cursor-not-allowed shadow-none'
-                : 'shadow-[2px_2px_0px_#000000] hover:brightness-105 active:translate-x-0.5 active:translate-y-0.5'
+                : 'shadow-[3px_3px_0px_#000000] hover:brightness-105 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000]'
             )}
           >
             MAINKAN
@@ -304,7 +304,7 @@ export const PlayerInteractionDock: React.FC<PlayerInteractionDockProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[60%] sm:max-w-[70%]">
+          <div className="flex items-center gap-1.5 overflow-x-auto custom-scroll py-0.5 max-w-[60%] sm:max-w-[70%]">
             {foldedCards.length === 0 ? (
               <span className="text-white/40 text-[10px] font-bold italic">
                 0 kartu
