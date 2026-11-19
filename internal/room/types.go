@@ -14,9 +14,10 @@ import (
 type RoomStatus string
 
 const (
-	StatusWaiting  RoomStatus = "waiting"
-	StatusPlaying  RoomStatus = "playing"
-	StatusFinished RoomStatus = "finished"
+	StatusWaiting   RoomStatus = "waiting"
+	StatusPlaying   RoomStatus = "playing"
+	StatusShuffling RoomStatus = "shuffling"
+	StatusFinished  RoomStatus = "finished"
 )
 
 // Table capacity, validation limits, and timing constants.
@@ -26,6 +27,7 @@ const (
 	MaxNicknameLength      = 7
 	RoomCodeLength         = 6
 	ReconnectGracePeriod   = 30 * time.Second
+	ShuffleTimeout         = 14 * time.Second
 	BotTurnDelay           = 700 * time.Millisecond
 	ReaperInterval         = 60 * time.Second
 	MaxRoomIdleDuration    = 5 * time.Minute
@@ -33,19 +35,21 @@ const (
 
 // WebSocket event type identifiers.
 const (
-	EventJoin        = "join"
-	EventToggleReady = "toggle_ready"
-	EventStartGame   = "start_game"
-	EventPlayCard    = "play_card"
-	EventFoldCard    = "fold_card"
-	EventPass        = "pass"
-	EventRematch     = "rematch"
-	EventLeaveRoom   = "leave_room"
-	EventAddBot      = "add_bot"
-	EventPing        = "ping"
-	EventRoomState   = "room_state"
-	EventPong        = "pong"
-	EventError       = "error"
+	EventJoin            = "join"
+	EventToggleReady     = "toggle_ready"
+	EventStartGame       = "start_game"
+	EventPlayCard        = "play_card"
+	EventFoldCard        = "fold_card"
+	EventPass            = "pass"
+	EventRematch         = "rematch"
+	EventLeaveRoom       = "leave_room"
+	EventAddBot          = "add_bot"
+	EventPing            = "ping"
+	EventRoomState       = "room_state"
+	EventPong            = "pong"
+	EventError           = "error"
+	EventShuffleProgress = "shuffle_progress"
+	EventLoungeReaction  = "lounge_reaction"
 )
 
 // AvatarColors provides high-contrast avatar hex codes mapped to seat indices (0..3).
@@ -141,6 +145,23 @@ type ErrorPayload struct {
 	Message string `json:"message"`
 }
 
+// ShuffleProgressPayload represents real-time 9-dot gesture shuffle progress for EventShuffleProgress.
+type ShuffleProgressPayload struct {
+	RoomID        string `json:"roomId"`
+	Step          int    `json:"step"`
+	TotalSteps    int    `json:"totalSteps"`
+	ShufflerID    string `json:"shufflerId,omitempty"`
+	AutoReshuffle bool   `json:"autoReshuffle,omitempty"`
+}
+
+// LoungeReactionPayload represents an interactive waiting lounge reaction ('sruput' or 'cheer').
+type LoungeReactionPayload struct {
+	RoomID     string `json:"roomId"`
+	Reaction   string `json:"reaction"`
+	SenderID   string `json:"senderId"`
+	SenderName string `json:"senderName,omitempty"`
+}
+
 // SanitizeRoomCode trims whitespace, converts to uppercase, filters strictly
 // to A-Z and 0-9 characters, and validates an exact length of 6 characters.
 func SanitizeRoomCode(raw string) (string, error) {
@@ -159,13 +180,13 @@ func SanitizeRoomCode(raw string) (string, error) {
 	return code, nil
 }
 
-// SanitizeNickname strips non-alphanumeric characters and excess whitespace,
-// truncates to a maximum of 7 characters, and falls back to a default preset
-// nickname ('Sekop07') if empty.
+// SanitizeNickname strips non-ASCII-alphanumeric characters and excess whitespace,
+// enforces ^[a-zA-Z0-9]{1,7}$, truncates to a maximum of 7 characters, and falls back
+// to a default preset nickname ('Sekop07') if empty.
 func SanitizeNickname(raw string) string {
 	var sb strings.Builder
 	for _, r := range strings.TrimSpace(raw) {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
 			sb.WriteRune(r)
 		}
 	}
@@ -173,11 +194,10 @@ func SanitizeNickname(raw string) string {
 	if len(cleaned) == 0 {
 		return "Sekop07"
 	}
-	runes := []rune(cleaned)
-	if len(runes) > MaxNicknameLength {
-		runes = runes[:MaxNicknameLength]
+	if len(cleaned) > MaxNicknameLength {
+		return cleaned[:MaxNicknameLength]
 	}
-	return string(runes)
+	return cleaned
 }
 
 // GenerateInitials generates 2 uppercase characters from the player's name:
