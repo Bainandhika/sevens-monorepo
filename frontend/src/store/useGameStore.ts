@@ -4,10 +4,12 @@ import {
   BoardState,
   BotDifficulty,
   Card,
+  LoungeReactionPayload,
   ModalType,
   Player,
   PlayerScoreDetail,
   RoomState,
+  RoundLogSnapshot,
   ScreenName,
   ServerHealthStatus,
   Suit,
@@ -82,6 +84,12 @@ export interface GameStoreState {
   toast: { visible: boolean; icon: string; message: string };
   audioEnabled: boolean;
   doubleTapEnabled: boolean;
+  shuffleStep: 1 | 2 | 3;
+  shuffleAutoReshuffled: boolean;
+  sruputActiveByPlayer: Record<string, number>;
+  isTableCheering: boolean;
+  lastCheeredBy: string | null;
+  roundLogSnapshot: RoundLogSnapshot | null;
   setScreen: (screen: ScreenName) => void;
   setPlayerName: (name: string) => void;
   randomizePlayerName: () => void;
@@ -98,6 +106,9 @@ export interface GameStoreState {
   triggerRematch: () => void;
   confirmRematch: () => void;
   startRematch: () => void;
+  setShuffleStep: (step: 1 | 2 | 3, autoReshuffle?: boolean) => void;
+  triggerLoungeReaction: (payload: LoungeReactionPayload) => void;
+  resetLoungeState: () => void;
   toggleAudio: () => void;
   toggleDoubleTap: () => void;
   leaveToLobby: () => void;
@@ -403,6 +414,15 @@ function finalizeRound(
           rtRwStatus,
         }
       : null,
+    roundLogSnapshot: prev.roomState
+      ? {
+          roundNumber: prev.roomState.roundNumber,
+          openerSuit: prev.roomState.openerSuit,
+          aceMode,
+          scores: updatedScores,
+          players: updatedPlayers,
+        }
+      : null,
     validMoves: [],
     selectedCard: null,
     currentScreen: 'scoreboard',
@@ -476,8 +496,21 @@ function executeFold(
   }));
 }
 
-// Module-level timer reference for auto-dismissing toast notifications
+// Module-level timer references for auto-dismissing toast and lounge reactions
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
+let cheerTimer: ReturnType<typeof setTimeout> | null = null;
+const sruputTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+function clearLoungeTimers() {
+  if (cheerTimer) {
+    clearTimeout(cheerTimer);
+    cheerTimer = null;
+  }
+  for (const key of Object.keys(sruputTimers)) {
+    clearTimeout(sruputTimers[key]);
+    delete sruputTimers[key];
+  }
+}
 
 /**
  * Central Zustand Game Store (useGameStore)
@@ -512,6 +545,12 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
     },
     audioEnabled: initialSettings.audioEnabled,
     doubleTapEnabled: initialSettings.doubleTapEnabled,
+    shuffleStep: 1,
+    shuffleAutoReshuffled: false,
+    sruputActiveByPlayer: {},
+    isTableCheering: false,
+    lastCheeredBy: null,
+    roundLogSnapshot: null,
 
     toggleAudio: () => {
       set((state) => {
@@ -532,7 +571,9 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
     setScreen: (screen: ScreenName) => set({ currentScreen: screen }),
 
     setPlayerName: (name: string) => {
-      const sanitized = name.slice(0, MAX_NICKNAME_LENGTH);
+      const sanitized = name
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .slice(0, MAX_NICKNAME_LENGTH);
       set((state) => {
         let updatedRoomState = state.roomState;
         if (updatedRoomState) {
@@ -759,6 +800,7 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         rtRwStatus: 'NONE',
       };
 
+      clearLoungeTimers();
       set({
         roomState: newRoom,
         validMoves: initialValidMoves,
@@ -766,6 +808,12 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         activeModal: 'none',
         isDrawerOpen: false,
         pendingFoldCard: null,
+        shuffleStep: 1,
+        shuffleAutoReshuffled: false,
+        sruputActiveByPlayer: {},
+        isTableCheering: false,
+        lastCheeredBy: null,
+        roundLogSnapshot: null,
         currentScreen: 'gameplay',
       });
 
@@ -922,9 +970,15 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
     },
 
     triggerRematch: () => {
+      clearLoungeTimers();
       set({
         currentScreen: 'shuffling',
         activeModal: 'none',
+        shuffleStep: 1,
+        shuffleAutoReshuffled: false,
+        sruputActiveByPlayer: {},
+        isTableCheering: false,
+        lastCheeredBy: null,
       });
     },
 
@@ -1007,6 +1061,7 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         'LOCKED_NONE'
       );
 
+      clearLoungeTimers();
       set({
         roomState: {
           ...roomState,
@@ -1027,6 +1082,11 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         activeModal: 'none',
         isDrawerOpen: false,
         pendingFoldCard: null,
+        shuffleStep: 1,
+        shuffleAutoReshuffled: false,
+        sruputActiveByPlayer: {},
+        isTableCheering: false,
+        lastCheeredBy: null,
         currentScreen: 'gameplay',
       });
 
@@ -1040,7 +1100,77 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
       get().confirmRematch();
     },
 
+    setShuffleStep: (step: 1 | 2 | 3, autoReshuffle?: boolean) => {
+      set((state) => ({
+        shuffleStep: step,
+        shuffleAutoReshuffled:
+          autoReshuffle !== undefined ? autoReshuffle : state.shuffleAutoReshuffled,
+      }));
+    },
+
+    triggerLoungeReaction: (payload: LoungeReactionPayload) => {
+      const now = Date.now();
+      if (payload.reaction === 'sruput') {
+        const senderId = payload.senderId;
+        if (!senderId) return;
+
+        if (sruputTimers[senderId]) {
+          clearTimeout(sruputTimers[senderId]);
+        }
+
+        set((state) => ({
+          sruputActiveByPlayer: {
+            ...state.sruputActiveByPlayer,
+            [senderId]: now,
+          },
+        }));
+
+        sruputTimers[senderId] = setTimeout(() => {
+          delete sruputTimers[senderId];
+          set((state) => {
+            if (!(senderId in state.sruputActiveByPlayer)) return {};
+            const nextMap = { ...state.sruputActiveByPlayer };
+            delete nextMap[senderId];
+            return { sruputActiveByPlayer: nextMap };
+          });
+        }, 1500);
+        return;
+      }
+
+      if (payload.reaction === 'cheer') {
+        if (cheerTimer) {
+          clearTimeout(cheerTimer);
+        }
+        const actorName = payload.senderName?.trim() || payload.senderId || 'Kawan';
+        set({
+          isTableCheering: true,
+          lastCheeredBy: actorName,
+        });
+        get().showToast('🔥', `${actorName} menyemangati pengocok kartu!`);
+
+        cheerTimer = setTimeout(() => {
+          cheerTimer = null;
+          set({
+            isTableCheering: false,
+            lastCheeredBy: null,
+          });
+        }, 1500);
+      }
+    },
+
+    resetLoungeState: () => {
+      clearLoungeTimers();
+      set({
+        shuffleStep: 1,
+        shuffleAutoReshuffled: false,
+        sruputActiveByPlayer: {},
+        isTableCheering: false,
+        lastCheeredBy: null,
+      });
+    },
+
     leaveToLobby: () => {
+      clearLoungeTimers();
       set({
         currentScreen: 'lobby',
         roomState: null,
@@ -1049,20 +1179,75 @@ export const useGameStore = create<GameStoreState>()((set, get) => {
         activeModal: 'none',
         isDrawerOpen: false,
         pendingFoldCard: null,
+        shuffleStep: 1,
+        shuffleAutoReshuffled: false,
+        sruputActiveByPlayer: {},
+        isTableCheering: false,
+        lastCheeredBy: null,
+        roundLogSnapshot: null,
       });
     },
 
     syncServerRoomState: (state: RoomState) => {
       const currentStore = get();
+      const prevStatus = currentStore.roomState?.status;
       const me = state.players.find((p) => p.id === currentStore.playerId);
       const myHand = me?.hand || [];
       const moves = state.board
         ? getValidMovesForHand(myHand, state.board, state.aceMode)
         : [];
 
+      const screenByStatus: Record<RoomState['status'], ScreenName> = {
+        waiting: 'waiting_room',
+        playing: 'gameplay',
+        shuffling: 'shuffling',
+        finished: 'scoreboard',
+      };
+      const nextScreen = screenByStatus[state.status] || currentStore.currentScreen;
+
+      let nextRoundLogSnapshot = currentStore.roundLogSnapshot;
+      if (state.status === 'finished' && state.scores) {
+        nextRoundLogSnapshot = {
+          roundNumber: state.roundNumber,
+          openerSuit: state.openerSuit,
+          aceMode: state.aceMode,
+          scores: state.scores,
+          players: state.players,
+        };
+      } else if (state.status === 'shuffling') {
+        if (!nextRoundLogSnapshot && state.scores) {
+          nextRoundLogSnapshot = {
+            roundNumber: state.roundNumber,
+            openerSuit: state.openerSuit,
+            aceMode: state.aceMode,
+            scores: state.scores,
+            players: state.players,
+          };
+        }
+      } else if (state.status === 'waiting') {
+        nextRoundLogSnapshot = null;
+      }
+
+      const enteredShuffling = state.status === 'shuffling' && prevStatus !== 'shuffling';
+      const leftShuffling = state.status !== 'shuffling' && prevStatus === 'shuffling';
+      if (enteredShuffling || leftShuffling || state.status === 'waiting') {
+        clearLoungeTimers();
+      }
+
       set({
         roomState: state,
         validMoves: moves,
+        currentScreen: nextScreen,
+        roundLogSnapshot: nextRoundLogSnapshot,
+        ...(enteredShuffling || leftShuffling || state.status === 'waiting'
+          ? {
+              shuffleStep: 1 as const,
+              shuffleAutoReshuffled: false,
+              sruputActiveByPlayer: {},
+              isTableCheering: false,
+              lastCheeredBy: null,
+            }
+          : {}),
       });
     },
 
