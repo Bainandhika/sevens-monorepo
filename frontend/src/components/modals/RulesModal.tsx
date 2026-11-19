@@ -56,7 +56,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="bg-[#FFE600] border-b-2 border-black px-4 py-3 flex items-center justify-between flex-shrink-0">
+        <div className="bg-[#FFE600] border-b-[2.5px] border-black px-4 py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center space-x-2">
             <span className="text-lg select-none">📜</span>
             <h2
@@ -70,26 +70,26 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
             type="button"
             onClick={onClose}
             aria-label="Tutup Aturan"
-            className="w-8 h-8 bg-white hover:bg-neutral-100 active:translate-x-0.5 active:translate-y-0.5 border-2 border-black rounded-lg flex items-center justify-center shadow-[2px_2px_0px_#000000] cursor-pointer transition font-mono font-black text-sm text-black select-none"
+            className="w-8 h-8 bg-white hover:bg-neutral-100 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] border-2 border-black rounded-lg flex items-center justify-center shadow-[2px_2px_0px_#000000] cursor-pointer transition font-mono font-black text-sm text-black select-none"
           >
             ✕
           </button>
         </div>
 
         {/* Scrollable Rules Body */}
-        <div className="flex-1 overflow-y-auto p-3.5 space-y-3 font-sans text-xs">
-          {/* Section 1: Alur Dasar & Pembuka */}
+        <div className="flex-1 overflow-y-auto custom-scroll p-3.5 space-y-3 font-sans text-xs">
+          {/* Section 1: Alur Dasar & Auto-Reshuffle */}
           <div className="bg-white border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_#000000] space-y-1.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-1.5">
-                <span className="w-5 h-5 rounded-full bg-[#10b981] text-black font-display font-black text-[11px] flex items-center justify-center border border-black">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center space-x-1.5 min-w-0">
+                <span className="w-5 h-5 shrink-0 rounded-full bg-[#10b981] text-black font-display font-black text-[11px] flex items-center justify-center border border-black">
                   1
                 </span>
                 <h3 className="font-display font-black text-xs text-black uppercase tracking-wide">
-                  ALUR DASAR & PEMBUKA
+                  ALUR DASAR &amp; AUTO-RESHUFFLE
                 </h3>
               </div>
-              <span className="text-xs font-mono select-none">
+              <span className="text-xs font-mono shrink-0 select-none">
                 {SUIT_SYMBOLS.spades} {SUIT_SYMBOLS.hearts} {SUIT_SYMBOLS.clubs} {SUIT_SYMBOLS.diamonds}
               </span>
             </div>
@@ -98,6 +98,12 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
                 <span className="text-black font-bold">•</span>
                 <span>
                   <strong>52 Kartu Standar</strong> tanpa Joker dibagi rata kepada 4 pemain (masing-masing 13 kartu).
+                </span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="text-black font-bold">•</span>
+                <span>
+                  <strong>Auto-Reshuffle (&ge;3 Kartu 7):</strong> Jika ada pemain menerima <strong>3 atau lebih kartu {ANCHOR_RANK}</strong> saat pembagian awal, dek langsung dikocok ulang otomatis agar adil.
                 </span>
               </li>
               <li className="flex items-start gap-1.5">
@@ -161,7 +167,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
                   STATE MACHINE KARTU AS
                 </h3>
               </div>
-              <span className="px-2 py-0.5 bg-[#FF7B6B]/30 border border-black text-[10px] font-display font-black uppercase rounded">
+              <span className="px-2 py-0.5 bg-[#FF7B6B]/30 border border-black text-[10px] font-display font-black uppercase rounded shrink-0 whitespace-nowrap">
                 PENTING
               </span>
             </div>
@@ -285,13 +291,13 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Modal Footer Action */}
-        <div className="bg-white border-t-2 border-black p-3 flex-shrink-0">
+        <div className="bg-white border-t-[2.5px] border-black p-3 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-3 bg-[#00D084] hover:bg-[#00c57c] active:translate-x-0.5 active:translate-y-0.5 text-black font-display font-black text-sm uppercase rounded-xl border-[2.5px] border-black shadow-[3px_3px_0px_#000000] flex items-center justify-center gap-2 transition select-none cursor-pointer"
+            className="w-full py-3 bg-[#00D084] hover:bg-[#00c57c] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] text-black font-display font-black text-sm uppercase rounded-xl border-[2.5px] border-black shadow-[3px_3px_0px_#000000] flex items-center justify-center gap-2 transition select-none cursor-pointer"
           >
-            <span>SAYA MENGERTI / TUTUP</span>
+            <span>SAYA PAHAM</span>
             <svg
               className="w-4 h-4 text-black stroke-[2.5]"
               fill="none"
