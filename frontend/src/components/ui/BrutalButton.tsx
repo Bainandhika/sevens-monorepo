@@ -2,7 +2,7 @@ import React from 'react';
 import clsx from 'clsx';
 
 export interface BrutalButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'mint' | 'emerald' | 'yellow' | 'coral' | 'white' | 'cream';
+  variant?: 'mint' | 'emerald' | 'yellow' | 'coral' | 'fold' | 'white' | 'cream' | 'dark';
   size?: 'sm' | 'md' | 'lg' | 'icon';
   fullWidth?: boolean;
   leftIcon?: React.ReactNode;
@@ -14,8 +14,10 @@ const variantStyles: Record<NonNullable<BrutalButtonProps['variant']>, string> =
   emerald: 'bg-[#10B981] text-black hover:bg-[#0ea372]',
   yellow: 'bg-[#FFE600] text-black hover:bg-[#ebd300]',
   coral: 'bg-[#FF4343] text-white hover:bg-[#ea3a3a]',
+  fold: 'bg-[#FF5A5F] text-white hover:bg-[#eb4d52]',
   white: 'bg-[#FFFFFF] text-black hover:bg-[#f2f2f2]',
   cream: 'bg-[#F5F0EA] text-black hover:bg-[#e7dfd5]',
+  dark: 'bg-[#283044] text-white hover:bg-[#1f2536]',
 };
 
 const sizeStyles: Record<NonNullable<BrutalButtonProps['size']>, string> = {
