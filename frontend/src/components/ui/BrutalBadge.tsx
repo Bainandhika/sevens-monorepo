@@ -2,7 +2,7 @@ import React from 'react';
 import clsx from 'clsx';
 
 export interface BrutalBadgeProps {
-  variant?: 'yellow' | 'mint' | 'coral' | 'black' | 'white' | 'cream';
+  variant?: 'yellow' | 'mint' | 'emerald' | 'coral' | 'maroon' | 'dark' | 'black' | 'white' | 'cream';
   pill?: boolean;
   pulseDotColor?: 'green' | 'yellow' | 'red';
   children: React.ReactNode;
@@ -13,7 +13,10 @@ export interface BrutalBadgeProps {
 const variantStyles: Record<NonNullable<BrutalBadgeProps['variant']>, string> = {
   yellow: 'bg-[#FFE600] text-black',
   mint: 'bg-[#00D084] text-black',
+  emerald: 'bg-[#10B981] text-black',
   coral: 'bg-[#FF4343] text-white',
+  maroon: 'bg-[#8B0000] text-white',
+  dark: 'bg-[#283044] text-[#FFD000]',
   black: 'bg-[#000000] text-white',
   white: 'bg-[#FFFFFF] text-black',
   cream: 'bg-[#F5F0EA] text-black',
