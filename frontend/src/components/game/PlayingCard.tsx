@@ -27,18 +27,20 @@ export interface SuitPlaceholderProps {
   suit?: Suit;
   symbol?: string;
   label?: string;
+  isPlayable?: boolean;
   className?: string;
   onClick?: () => void;
 }
 
 /**
  * Placeholder slot for CentralBoard when anchor card 7 is not yet placed
- * Spec: w-full h-[76px] sm:h-20 rounded-xl border-2 border-white/15 bg-black/20 flex items-center justify-center.
+ * Spec: w-full h-[76px] sm:h-20 rounded-xl border-2 border-white/15 bg-black/20 suit-placeholder flex items-center justify-center.
  */
 export function SuitPlaceholder({
   suit,
   symbol,
   label,
+  isPlayable = false,
   className,
   onClick,
 }: SuitPlaceholderProps) {
@@ -46,14 +48,26 @@ export function SuitPlaceholder({
   const isRed = suit === 'hearts' || suit === 'diamonds';
   const color = isRed ? '#FF4343' : '#000000';
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!onClick) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
+      onKeyDown={onClick ? handleKeyDown : undefined}
       className={clsx(
-        'w-full h-[76px] sm:h-20 rounded-xl border-2 border-white/15 bg-black/20 flex items-center justify-center select-none font-display font-black transition-all',
-        onClick && 'cursor-pointer hover:border-black/60 hover:bg-white/25 active:scale-95',
+        'w-full h-[76px] sm:h-20 rounded-xl border-2 flex items-center justify-center select-none font-display font-black transition-all',
+        isPlayable
+          ? 'border-dashed border-[#00D084] bg-[#00D084]/25 ring-2 ring-[#00D084] animate-pulse cursor-pointer hover:bg-[#00D084]/35 active:scale-95'
+          : 'border-white/15 bg-black/20 suit-placeholder',
+        onClick && !isPlayable && 'cursor-pointer hover:border-black/60 hover:bg-white/25 active:scale-95',
         className
       )}
       style={{ color }}
@@ -286,7 +300,7 @@ export function PlayingCard({
         onDoubleClick={onDoubleTap ? handleDoubleClick : undefined}
         onKeyDown={onSelect ? handleKeyDown : undefined}
         className={clsx(
-          'w-full h-[76px] sm:h-20 rounded-xl border-[2.5px] border-black p-1.5 sm:p-2 relative flex flex-col justify-between items-center font-display font-black select-none transition-all duration-150 shadow-[3px_3px_0px_#000000]',
+          'w-full aspect-[1/1.3] max-h-[82px] sm:max-h-[88px] h-[76px] sm:h-20 rounded-xl border-[2.5px] border-black p-1.5 sm:p-2 relative flex flex-col justify-between items-center font-display font-black select-none transition-all duration-150 shadow-[3px_3px_0px_#000000]',
           isAnchor ? 'bg-[#FFE600]' : 'bg-white',
           isSelected && '-translate-y-1 shadow-[4px_4px_0px_#000000] ring-2 ring-black',
           (onSelect || onDoubleTap) && !disabled ? 'cursor-pointer hover:-translate-y-0.5' : 'cursor-default',
@@ -320,9 +334,9 @@ export function PlayingCard({
       onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       className={clsx(
-        'w-full h-12 sm:h-14 rounded-lg border-2 border-black p-1 flex flex-col justify-between select-none font-display font-black transition-all duration-150',
+        'w-full h-12 sm:h-14 rounded-md sm:rounded-lg border-2 border-black p-1 flex flex-col justify-between select-none font-display font-black transition-all duration-150',
         isSelected
-          ? 'bg-[#FFE600] border-[2.5px] border-black ring-2 ring-black -translate-y-1.5 z-20 shadow-[2px_2px_0px_#000000]'
+          ? 'bg-[#FFE600] border-[2.5px] border-black ring-2 ring-black -translate-y-2 z-20 shadow-[2px_2px_0px_#000000]'
           : 'bg-white',
         isPlayable && !isSelected && 'hover:-translate-y-1 hover:shadow-[1.5px_1.5px_0px_#000000]',
         !disabled && 'cursor-pointer active:translate-y-0',
@@ -344,7 +358,7 @@ export function PlayingCard({
           </span>
         )}
       </div>
-      <span className="self-end text-xs sm:text-sm font-bold leading-none">
+      <span className="self-center text-sm sm:text-base font-bold leading-none my-auto">
         {suitSymbol}
       </span>
     </button>
