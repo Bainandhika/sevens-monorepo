@@ -1,12 +1,19 @@
 package room
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"math/rand"
+	"net"
+	"net/http"
+	"net/url"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/olahol/melody"
 	"github.com/user/sevens/pkg/engine"
 )
 
@@ -37,7 +44,7 @@ func TestSanitizeAndInitials(t *testing.T) {
 		}
 	}
 
-	// 2. Nickname sanitization tests
+	// 2. Nickname sanitization tests (strict ASCII alphanumeric ^[a-zA-Z0-9]{1,7}$)
 	nicknames := []struct {
 		input    string
 		expected string
@@ -47,6 +54,9 @@ func TestSanitizeAndInitials(t *testing.T) {
 		{"", "Sekop07"},
 		{"   !@#$   ", "Sekop07"},
 		{"Bob @ 99", "Bob99"},
+		{"Budié99", "Budi99"},
+		{"αβγ", "Sekop07"},
+		{"A1b2C3d4", "A1b2C3d"},
 	}
 	for _, tc := range nicknames {
 		got := SanitizeNickname(tc.input)
@@ -134,7 +144,9 @@ func TestWaitingRoomAndAutoFillHardBots(t *testing.T) {
 		t.Fatalf("expected %d players, got %d", MaxPlayers, len(r.Players))
 	}
 
-	// Verify seats 3 and 4 (indices 2 and 3) are Hard Bots
+	// Verify seats 3 and 4 (indices 2 and 3) are tactical Hard Bots
+	expectedNames := []string{"Agresif9", "Cermat8"}
+	expectedInitials := []string{"A9", "C8"}
 	for i := 2; i < 4; i++ {
 		bot := r.Players[i]
 		if !bot.IsBot {
@@ -143,13 +155,35 @@ func TestWaitingRoomAndAutoFillHardBots(t *testing.T) {
 		if bot.BotLevel != engine.DifficultyHard {
 			t.Errorf("player %d expected BotLevel %s, got %s", i, engine.DifficultyHard, bot.BotLevel)
 		}
-		if bot.Name != "Bot (Hard)" {
-			t.Errorf("player %d expected name 'Bot (Hard)', got %s", i, bot.Name)
+		if bot.Name != expectedNames[i-2] {
+			t.Errorf("player %d expected name %q, got %q", i, expectedNames[i-2], bot.Name)
+		}
+		if bot.Initials != expectedInitials[i-2] {
+			t.Errorf("player %d expected initials %q, got %q", i, expectedInitials[i-2], bot.Initials)
 		}
 	}
 
 	if r.Status != StatusPlaying {
 		t.Errorf("expected room status %s, got %s", StatusPlaying, r.Status)
+	}
+
+	// Also verify 1 human + 3 empty seats fills Agresif9, Cermat8, Taktik7
+	rSolo := mgr.GetOrCreateRoom("SOLO01")
+	rSolo.Players = []*Player{
+		{ID: "h1", Name: "Sekop07", Initials: "S7", AvatarColor: GetAvatarColor(0), IsHost: true, IsReady: true, IsConnected: true},
+	}
+	rSolo.FillEmptySeatsWithHardBots()
+	wantThree := []struct{ name, init string }{
+		{"Agresif9", "A9"},
+		{"Cermat8", "C8"},
+		{"Taktik7", "T7"},
+	}
+	for idx, want := range wantThree {
+		bot := rSolo.Players[idx+1]
+		if bot.Name != want.name || bot.Initials != want.init || bot.BotLevel != engine.DifficultyHard {
+			t.Errorf("solo bot %d = (%q, %q, %s); want (%q, %q, hard)",
+				idx+1, bot.Name, bot.Initials, bot.BotLevel, want.name, want.init)
+		}
 	}
 }
 
@@ -588,6 +622,264 @@ func TestHostMigrationAndReaper(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
+}
+
+type pipeHijackWriter struct {
+	conn   net.Conn
+	brw    *bufio.ReadWriter
+	header http.Header
+}
+
+func (p *pipeHijackWriter) Header() http.Header         { return p.header }
+func (p *pipeHijackWriter) Write(b []byte) (int, error) { return p.brw.Write(b) }
+func (p *pipeHijackWriter) WriteHeader(int)             {}
+func (p *pipeHijackWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return p.conn, p.brw, nil
+}
+
+func setupWSTestServer(t *testing.T) (*Manager, *SocketHandler, func() *websocket.Conn) {
+	t.Helper()
+	mgr := NewManager()
+	m := melody.New()
+	handler := NewSocketHandler(m, mgr)
+
+	dial := func() *websocket.Conn {
+		clientConn, serverConn := net.Pipe()
+		go func() {
+			br := bufio.NewReader(serverConn)
+			req, err := http.ReadRequest(br)
+			if err != nil {
+				_ = serverConn.Close()
+				return
+			}
+			rw := &pipeHijackWriter{
+				conn:   serverConn,
+				brw:    bufio.NewReadWriter(br, bufio.NewWriter(serverConn)),
+				header: make(http.Header),
+			}
+			handler.HandleUpgrade(rw, req)
+		}()
+
+		u, _ := url.Parse("ws://localhost/ws")
+		wsConn, _, err := websocket.NewClient(clientConn, u, nil, 1024, 1024)
+		if err != nil {
+			t.Fatalf("in-memory websocket dial failed: %v", err)
+		}
+		return wsConn
+	}
+
+	t.Cleanup(func() {
+		_ = m.Close()
+	})
+	return mgr, handler, dial
+}
+
+func readWSMessageOfType(t *testing.T, conn *websocket.Conn, wantType string) WSMessage {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		_ = conn.SetReadDeadline(deadline)
+		_, raw, err := conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("failed reading ws message waiting for %q: %v", wantType, err)
+		}
+		var msg WSMessage
+		if err := json.Unmarshal(raw, &msg); err != nil {
+			t.Fatalf("invalid ws JSON: %v", err)
+		}
+		if msg.Type == wantType {
+			return msg
+		}
+	}
+	t.Fatalf("timed out waiting for ws message type %q", wantType)
+	return WSMessage{}
+}
+
+func sendWSEvent(t *testing.T, conn *websocket.Conn, eventType string, payload any) {
+	t.Helper()
+	if err := conn.WriteJSON(WSResponse{Type: eventType, Payload: payload}); err != nil {
+		t.Fatalf("failed sending %s: %v", eventType, err)
+	}
+}
+
+func TestSocketShuffleRitualAndLoungeReactions(t *testing.T) {
+	mgr, handler, dial := setupWSTestServer(t)
+	handler.shuffleTimeout = 100 * time.Millisecond
+	handler.botShuffleStepDelay = 15 * time.Millisecond
+
+	c1 := dial()
+	defer c1.Close()
+
+	c2 := dial()
+	defer c2.Close()
+
+	// 1. Join room & check initial statusRtRw == "NONE"
+	sendWSEvent(t, c1, EventJoin, JoinPayload{RoomID: "SHUF01", PlayerID: "p1", Name: "Host1!", SessionToken: "tok1"})
+	msg1 := readWSMessageOfType(t, c1, EventRoomState)
+	var rs1 Room
+	if err := json.Unmarshal(msg1.Payload, &rs1); err != nil {
+		t.Fatalf("unmarshal room_state 1: %v", err)
+	}
+	if rs1.Players[0].Name != "Host1" || rs1.Players[0].StatusRTRW != engine.StatusNone {
+		t.Fatalf("unexpected player 1 join state: name=%q statusRtRw=%q", rs1.Players[0].Name, rs1.Players[0].StatusRTRW)
+	}
+
+	sendWSEvent(t, c2, EventJoin, JoinPayload{RoomID: "SHUF01", PlayerID: "p2", Name: "Guest2", SessionToken: "tok2"})
+	_ = readWSMessageOfType(t, c1, EventRoomState)
+	_ = readWSMessageOfType(t, c2, EventRoomState)
+
+	// 2. Non-host start_game should return error; add_bot should lock difficulty to hard
+	sendWSEvent(t, c2, EventStartGame, StartGamePayload{RoomID: "SHUF01", PlayerID: "p2"})
+	errMsg := readWSMessageOfType(t, c2, EventError)
+	var errPayload ErrorPayload
+	_ = json.Unmarshal(errMsg.Payload, &errPayload)
+	if errPayload.Message != "hanya host yang dapat memulai permainan" {
+		t.Errorf("unexpected non-host start error: %q", errPayload.Message)
+	}
+
+	sendWSEvent(t, c1, EventAddBot, AddBotPayload{RoomID: "SHUF01", Difficulty: engine.DifficultyEasy})
+	botStateMsg := readWSMessageOfType(t, c1, EventRoomState)
+	_ = readWSMessageOfType(t, c2, EventRoomState)
+	var rsBot Room
+	_ = json.Unmarshal(botStateMsg.Payload, &rsBot)
+	if len(rsBot.Players) != 3 || rsBot.Players[2].BotLevel != engine.DifficultyHard || rsBot.Players[2].Name != "Agresif9" {
+		t.Fatalf("expected locked Hard bot Agresif9, got %+v", rsBot.Players)
+	}
+
+	// 3. Move room to StatusFinished with p2 as Juru Kunci, then trigger rematch -> StatusShuffling
+	r, _ := mgr.GetRoom("SHUF01")
+	r.Mu.Lock()
+	r.FillEmptySeatsWithHardBots()
+	r.Players[0].FoldedCards = nil
+	r.Players[1].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 13}} // p2 loses
+	r.Players[2].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 2}}
+	r.Players[3].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 3}}
+	r.RoundNumber = 1
+	r.FinalizeRound()
+	r.Mu.Unlock()
+
+	// Disable timeout briefly by setting long timeout for manual step-3 test
+	handler.shuffleTimeout = 2 * time.Second
+	sendWSEvent(t, c1, EventRematch, RematchPayload{RoomID: "SHUF01", PlayerID: "p1"})
+	shufMsg := readWSMessageOfType(t, c2, EventRoomState)
+	_ = readWSMessageOfType(t, c1, EventRoomState)
+	var rsShuf Room
+	_ = json.Unmarshal(shufMsg.Payload, &rsShuf)
+	if rsShuf.Status != StatusShuffling || rsShuf.ShufflerID != "p2" {
+		t.Fatalf("expected StatusShuffling with shufflerId=p2, got status=%s shufflerId=%q", rsShuf.Status, rsShuf.ShufflerID)
+	}
+
+	// 4. Lounge reactions: valid 'sruput' & 'cheer', invalid rejected
+	sendWSEvent(t, c1, EventLoungeReaction, LoungeReactionPayload{RoomID: "SHUF01", Reaction: "sruput", SenderID: "p1"})
+	reactMsg := readWSMessageOfType(t, c2, EventLoungeReaction)
+	var reactPayload LoungeReactionPayload
+	_ = json.Unmarshal(reactMsg.Payload, &reactPayload)
+	if reactPayload.Reaction != "sruput" || reactPayload.SenderID != "p1" || reactPayload.SenderName != "Host1" {
+		t.Errorf("unexpected lounge_reaction payload: %+v", reactPayload)
+	}
+
+	sendWSEvent(t, c1, EventLoungeReaction, LoungeReactionPayload{RoomID: "SHUF01", Reaction: "invalid", SenderID: "p1"})
+	_ = readWSMessageOfType(t, c1, EventError)
+
+	// 5. Shuffle progress steps 1..3 transition to StatusPlaying
+	sendWSEvent(t, c2, EventShuffleProgress, ShuffleProgressPayload{RoomID: "SHUF01", Step: 1, TotalSteps: 3})
+	p1Msg := readWSMessageOfType(t, c1, EventShuffleProgress)
+	var sp1 ShuffleProgressPayload
+	_ = json.Unmarshal(p1Msg.Payload, &sp1)
+	if sp1.Step != 1 || sp1.ShufflerID != "p2" {
+		t.Errorf("unexpected step 1 broadcast: %+v", sp1)
+	}
+
+	sendWSEvent(t, c2, EventShuffleProgress, ShuffleProgressPayload{RoomID: "SHUF01", Step: 3, TotalSteps: 3})
+	_ = readWSMessageOfType(t, c1, EventShuffleProgress)
+	playingMsg := readWSMessageOfType(t, c1, EventRoomState)
+	_ = readWSMessageOfType(t, c2, EventRoomState)
+	var rsPlaying Room
+	_ = json.Unmarshal(playingMsg.Payload, &rsPlaying)
+	if rsPlaying.Status != StatusPlaying || rsPlaying.RoundNumber != 2 || rsPlaying.ShufflerID != "" {
+		t.Fatalf("expected StatusPlaying round 2 after step 3, got status=%s round=%d shuffler=%q",
+			rsPlaying.Status, rsPlaying.RoundNumber, rsPlaying.ShufflerID)
+	}
+
+	// 6. Test anti-stall fallback timeout when human shuffler stalls
+	handler.shuffleTimeout = 40 * time.Millisecond
+	r.Mu.Lock()
+	r.Players[0].FoldedCards = nil
+	r.Players[1].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 13}}
+	r.Players[2].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 2}}
+	r.Players[3].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 3}}
+	r.FinalizeRound()
+	r.Mu.Unlock()
+
+	sendWSEvent(t, c1, EventRematch, RematchPayload{RoomID: "SHUF01", PlayerID: "p1"})
+	_ = readWSMessageOfType(t, c1, EventRoomState) // shuffling
+	autoMsg := readWSMessageOfType(t, c1, EventShuffleProgress)
+	var spAuto ShuffleProgressPayload
+	_ = json.Unmarshal(autoMsg.Payload, &spAuto)
+	if !spAuto.AutoReshuffle || spAuto.Step != 3 {
+		t.Errorf("expected AutoReshuffle step 3 on timeout, got %+v", spAuto)
+	}
+	resumedMsg := readWSMessageOfType(t, c1, EventRoomState)
+	var rsResumed Room
+	_ = json.Unmarshal(resumedMsg.Payload, &rsResumed)
+	if rsResumed.Status != StatusPlaying || rsResumed.RoundNumber != 3 {
+		t.Errorf("expected StatusPlaying round 3 after timeout, got status=%s round=%d", rsResumed.Status, rsResumed.RoundNumber)
+	}
+
+	// 7. Test Bot Juru Kunci automated 3-step shuffle ritual
+	handler.shuffleTimeout = 2 * time.Second
+	r.Mu.Lock()
+	r.Players[0].FoldedCards = nil
+	r.Players[1].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 2}}
+	r.Players[2].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 13}} // bot loses
+	r.Players[3].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 3}}
+	r.FinalizeRound()
+	r.Mu.Unlock()
+
+	sendWSEvent(t, c1, EventRematch, RematchPayload{RoomID: "SHUF01", PlayerID: "p1"})
+	_ = readWSMessageOfType(t, c1, EventRoomState) // shuffling with bot shuffler
+	for expectedStep := 1; expectedStep <= 3; expectedStep++ {
+		botStepMsg := readWSMessageOfType(t, c1, EventShuffleProgress)
+		var spBot ShuffleProgressPayload
+		_ = json.Unmarshal(botStepMsg.Payload, &spBot)
+		if spBot.Step != expectedStep {
+			t.Errorf("expected bot shuffle step %d, got %d", expectedStep, spBot.Step)
+		}
+	}
+	botDoneMsg := readWSMessageOfType(t, c1, EventRoomState)
+	var rsBotDone Room
+	_ = json.Unmarshal(botDoneMsg.Payload, &rsBotDone)
+	if rsBotDone.Status != StatusPlaying || rsBotDone.RoundNumber != 4 {
+		t.Errorf("expected StatusPlaying round 4 after bot shuffle, got status=%s round=%d", rsBotDone.Status, rsBotDone.RoundNumber)
+	}
+
+	// 8. Test Juru Kunci leaving during StatusShuffling converts to Bot and auto-completes
+	r.Mu.Lock()
+	r.Players[0].FoldedCards = nil
+	r.Players[1].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 13}} // p2 loses
+	r.Players[2].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 2}}
+	r.Players[3].FoldedCards = []engine.Card{{Suit: engine.Spades, Rank: 3}}
+	r.FinalizeRound()
+	r.Mu.Unlock()
+
+	sendWSEvent(t, c1, EventRematch, RematchPayload{RoomID: "SHUF01", PlayerID: "p1"})
+	_ = readWSMessageOfType(t, c1, EventRoomState) // shuffling (p2)
+	_ = readWSMessageOfType(t, c2, EventRoomState)
+
+	sendWSEvent(t, c2, EventLeaveRoom, LeaveRoomPayload{RoomID: "SHUF01", PlayerID: "p2"})
+	leaveAutoMsg := readWSMessageOfType(t, c1, EventShuffleProgress)
+	var spLeave ShuffleProgressPayload
+	_ = json.Unmarshal(leaveAutoMsg.Payload, &spLeave)
+	if !spLeave.AutoReshuffle || spLeave.Step != 3 {
+		t.Errorf("expected AutoReshuffle step 3 on shuffler leave, got %+v", spLeave)
+	}
+	leaveDoneMsg := readWSMessageOfType(t, c1, EventRoomState)
+	var rsLeaveDone Room
+	_ = json.Unmarshal(leaveDoneMsg.Payload, &rsLeaveDone)
+	if rsLeaveDone.Status != StatusPlaying || !rsLeaveDone.Players[1].IsBot {
+		t.Errorf("expected StatusPlaying and p2 converted to Bot after leave, got status=%s isBot=%v",
+			rsLeaveDone.Status, rsLeaveDone.Players[1].IsBot)
+	}
 }
 
 // Skipped: live WebSocket network latency testing (isolated to in-memory room lifecycle).
