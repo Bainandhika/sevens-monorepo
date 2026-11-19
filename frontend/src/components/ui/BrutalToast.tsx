@@ -34,10 +34,12 @@ export const BrutalToast: React.FC<BrutalToastProps> = ({
       aria-live="polite"
       className={clsx(
         // Base neo-brutalist toast styling
-        'fixed left-1/2 -translate-x-1/2 z-50 px-3.5 py-2 rounded-lg border-2 border-black shadow-[3.5px_3.5px_0px_#000000] text-xs font-display font-black uppercase flex items-center gap-2 transition-all duration-200 pointer-events-none select-none max-w-[90vw] whitespace-nowrap overflow-hidden text-ellipsis',
+        'fixed left-1/2 -translate-x-1/2 z-50 px-3.5 py-2 rounded-lg border-[2.5px] border-black shadow-[3.5px_3.5px_0px_#000000] text-xs font-display font-black uppercase flex items-center gap-2 transition-all duration-200 pointer-events-none select-none max-w-[90vw] whitespace-nowrap overflow-hidden text-ellipsis',
         
-        // Placement
-        position === 'top' ? 'top-16' : 'bottom-6',
+        // Placement with mobile PWA safe-area clearance
+        position === 'top'
+          ? 'top-[calc(4rem+env(safe-area-inset-top,0px))]'
+          : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))]',
 
         // Color Variant
         variantStyles[variant],
