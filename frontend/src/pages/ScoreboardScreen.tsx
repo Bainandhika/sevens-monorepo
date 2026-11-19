@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { ArrowLeft, RotateCcw, LogOut } from 'lucide-react';
 import clsx from 'clsx';
 import { Card, Player, PlayerScoreDetail } from '../types/game';
-import { useGameStore, getInitials } from '../store/useGameStore';
+import { useGameStore, getInitials, getAceStatusLabel } from '../store/useGameStore';
 import {
   RANK_LABELS,
   SUIT_SYMBOLS,
@@ -78,16 +78,14 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
     toast,
   } = useGameStore();
 
-  const displayRoomCode =
-    (roomState?.id || roomCodeInput || 'IB9GVM').toUpperCase();
+  const displayRoomCode = (roomState?.id || roomCodeInput || 'IB9GVM')
+    .replace(/^offline_/, '')
+    .toUpperCase();
   const roundNumber = roomState?.roundNumber || 1;
 
-  // Ace mode formatted for subheader telemetry pill (Stitch: STATUS AS: LOW / HIGH / BELUM TERBUKA)
+  // Ace mode formatted for subheader telemetry pill ('Belum Terbuka' | 'As Rendah (1)' | 'As Tinggi (15)')
   const aceModeLabel = useMemo(() => {
-    const mode = roomState?.aceMode || 'LOCKED_NONE';
-    if (mode === 'LOW') return 'LOW';
-    if (mode === 'HIGH') return 'HIGH';
-    return 'BELUM TERBUKA';
+    return getAceStatusLabel(roomState?.aceMode || 'LOCKED_NONE');
   }, [roomState?.aceMode]);
 
   // Leave room handler (returns to lobby)
@@ -99,11 +97,12 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
     }
   };
 
-  // Rematch action handler
+  // Rematch action handler: delegate to parent handler when provided, else route to ShuffleRitualScreen
   const handleRematchClick = () => {
-    triggerRematch();
     if (onRequestRematch) {
       onRequestRematch();
+    } else {
+      triggerRematch();
     }
   };
 
@@ -191,14 +190,14 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
             { suit: 'clubs', rank: 13 },
             { suit: 'hearts', rank: 5 },
           ],
-          penaltyPoints: 28,
+          penaltyPoints: 29,
           lossesCount: 2,
           consecutiveLosses: 0,
           statusRtRw: 'NONE',
           isConnected: true,
         },
         rankPosition: 3,
-        totalPenalty: 28,
+        totalPenalty: 29,
         foldedDetails: [
           {
             card: { suit: 'spades', rank: 11 },
@@ -229,7 +228,7 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
         player: {
           id: 'bot_cermat',
           name: 'Cermat8',
-          initials: 'BA',
+          initials: 'C8',
           avatarColor: '#FB7185',
           isBot: true,
           isReady: true,
@@ -238,14 +237,14 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
             { suit: 'spades', rank: 6 },
             { suit: 'hearts', rank: 8 },
           ],
-          penaltyPoints: 52,
+          penaltyPoints: 60,
           lossesCount: 6,
           consecutiveLosses: 6,
           statusRtRw: 'RW',
           isConnected: true,
         },
         rankPosition: 4,
-        totalPenalty: 52,
+        totalPenalty: 60,
         foldedDetails: [
           {
             card: { suit: 'spades', rank: 6 },
@@ -363,9 +362,12 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
         (p) => p.id === roomState.rtRwHolderId
       );
       if (found) {
+        const matchedScore = rankedScores.find((e) => e.player.id === found.id);
         return {
           ...found,
           statusRtRw: roomState.rtRwStatus,
+          consecutiveLosses:
+            found.consecutiveLosses ?? matchedScore?.consecutiveLosses ?? 0,
         };
       }
     }
@@ -393,7 +395,7 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
     return null;
   }, [roomState, rankedScores]);
 
-  // Helper to render compact folded card chips matching Stitch Screen b2b54aed839d4334871e34c6065f6019
+  // Helper to render compact folded card chips (key cards 6 & 8 highlighted in coral #FF4D4D with 🔑 +30)
   const renderFoldedCardChip = (
     detail: {
       card: Card;
@@ -403,25 +405,43 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
     },
     idx: number
   ) => {
-    const { card } = detail;
+    const { card, isKeyCardPenalty } = detail;
     const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
     const suitSymbol = SUIT_SYMBOLS[card.suit] || '♠';
     const rankLabel = RANK_LABELS[card.rank] || String(card.rank);
-    const isKey = isKeyCard(card);
+    const isKey = Boolean(isKeyCardPenalty || isKeyCard(card));
+
+    if (isKey) {
+      return (
+        <span
+          key={`folded-${card.suit}-${card.rank}-${idx}`}
+          title={`Kartu Kunci ${rankLabel}${suitSymbol} (+30 Poin Denda)`}
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#FF4D4D] text-white border border-black text-[11px] font-display font-black shadow-[1px_1px_0px_#000000]"
+        >
+          <span>
+            {rankLabel}
+            {suitSymbol}
+          </span>
+          <span className="text-[10px] leading-none">🔑</span>
+          <span className="ml-0.5 bg-black text-white text-[9px] font-black px-1 rounded leading-tight">
+            +30
+          </span>
+        </span>
+      );
+    }
 
     return (
       <span
         key={`folded-${card.suit}-${card.rank}-${idx}`}
         className={clsx(
           'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white border border-black text-[11px] font-display font-bold shadow-[1px_1px_0px_#000000]',
-          isRed ? 'text-red-600' : 'text-slate-900'
+          isRed ? 'text-[#FF4343]' : 'text-black'
         )}
       >
         <span>
           {rankLabel}
           {suitSymbol}
         </span>
-        {isKey && <span className="text-[10px]">🔑</span>}
       </span>
     );
   };
@@ -539,7 +559,7 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
                             ANDA
                           </span>
                         ) : player.isBot ? (
-                          <span className="bg-[#121212] text-white text-[7px] px-1 py-0.5 rounded font-display font-bold uppercase shrink-0">
+                          <span className="bg-[#283044] text-white text-[8px] px-1.5 py-0.5 rounded font-display font-bold uppercase shrink-0">
                             BOT
                           </span>
                         ) : null}
@@ -643,7 +663,14 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
               <div className="flex items-center justify-between pb-1.5 border-b-[1.5px] border-black/15">
                 <div className="flex items-center gap-2.5">
                   <div
-                    className="w-12 h-12 rounded-xl border-2 border-black flex items-center justify-center font-display text-sm font-black text-white shadow-[1px_1px_0px_#000] shrink-0"
+                    className={clsx(
+                      'w-12 h-12 rounded-xl border-2 border-black flex items-center justify-center font-display text-sm font-black shadow-[1px_1px_0px_#000] shrink-0',
+                      ['#4F46E5', '#A855F7', '#8B0000', '#283044', '#E11D48'].includes(
+                        (rtRwHolder.avatarColor || '#E11D48').toUpperCase()
+                      )
+                        ? 'text-white'
+                        : 'text-black'
+                    )}
                     style={{
                       backgroundColor: rtRwHolder.avatarColor || '#E11D48',
                     }}
@@ -660,7 +687,7 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
                           ANDA
                         </span>
                       ) : rtRwHolder.isBot ? (
-                        <span className="bg-[#121212] text-white text-[8px] px-1.5 py-0.5 rounded font-display font-bold uppercase">
+                        <span className="bg-[#283044] text-white text-[8px] px-1.5 py-0.5 rounded font-display font-bold uppercase">
                           BOT
                         </span>
                       ) : null}
@@ -681,12 +708,17 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
                 </div>
               </div>
 
-              <div className="pt-1.5 flex items-center justify-between text-[11px]">
+              <div className="pt-1.5 flex items-center justify-between gap-2 text-[11px]">
                 <span className="text-black/70 font-medium">
                   {rtRwHolder.statusRtRw === 'RW'
                     ? 'Mencapai 2x status RT beruntun (6x Kalah Beruntun)'
                     : 'Kalah 3x berturut-turut di room yang sama'}
                 </span>
+                {(rtRwHolder.consecutiveLosses ?? 0) > 0 && (
+                  <span className="px-1.5 py-0.5 rounded bg-[#8b0000] text-[#FFE600] border border-black font-display font-black text-[10px] whitespace-nowrap shrink-0">
+                    Streak: {rtRwHolder.consecutiveLosses}x
+                  </span>
+                )}
               </div>
             </div>
           ) : (
@@ -713,7 +745,7 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
             id="btn-play-again"
             type="button"
             onClick={handleRematchClick}
-            className="w-full py-3 px-4 rounded-xl bg-[#FFE600] hover:bg-yellow-300 active:translate-x-[2px] active:translate-y-[2px] text-black font-display text-[15px] font-black uppercase tracking-wide border-[2.5px] border-black shadow-[3px_3px_0px_#000000] flex items-center justify-center gap-2 transition-transform cursor-pointer"
+            className="w-full py-3 px-4 rounded-xl bg-[#FFE600] hover:bg-yellow-300 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] text-black font-display text-[15px] font-black uppercase tracking-wide border-[3px] border-black shadow-[4px_4px_0px_#000000] flex items-center justify-center gap-2 transition-transform cursor-pointer"
           >
             <RotateCcw className="w-5 h-5 stroke-[2.5]" />
             <span>MAIN LAGI (REMATCH)</span>
@@ -722,7 +754,7 @@ export const ScoreboardScreen: React.FC<ScoreboardScreenProps> = ({
             id="btn-back-menu"
             type="button"
             onClick={leaveRoom}
-            className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 active:translate-x-[2px] active:translate-y-[2px] text-black font-display text-[14px] font-bold uppercase tracking-wide border-[2.5px] border-black shadow-[3px_3px_0px_#000000] flex items-center justify-center gap-1.5 transition-transform cursor-pointer"
+            className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] text-black font-display text-[14px] font-bold uppercase tracking-wide border-[2.5px] border-black shadow-[3px_3px_0px_#000000] flex items-center justify-center gap-1.5 transition-transform cursor-pointer"
           >
             <LogOut className="w-4 h-4 stroke-[2.5]" />
             <span>KEMBALI KE MENU</span>
