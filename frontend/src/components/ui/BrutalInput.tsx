@@ -6,13 +6,14 @@ export interface BrutalInputProps extends React.InputHTMLAttributes<HTMLInputEle
   label?: string;
   badgeText?: string;
   leftIcon?: React.ReactNode;
+  alphanumericOnly?: boolean;
   uppercaseAlphanumeric?: boolean;
   flashHighlight?: boolean;
 }
 
 /**
  * Tactical Neo-Brutalist Input Field Component
- * Supports nickname restrictions (e.g. max 7 chars), room code uppercase styling (e.g. 6 chars),
+ * Supports nickname restrictions (e.g. max 7 alphanumeric chars), room code uppercase styling (e.g. 6 chars),
  * left icons, badge counters, and flash animation states.
  */
 export const BrutalInput = React.forwardRef<HTMLInputElement, BrutalInputProps>(
@@ -21,6 +22,7 @@ export const BrutalInput = React.forwardRef<HTMLInputElement, BrutalInputProps>(
       label,
       badgeText,
       leftIcon,
+      alphanumericOnly = false,
       uppercaseAlphanumeric = false,
       flashHighlight = false,
       id,
@@ -35,8 +37,15 @@ export const BrutalInput = React.forwardRef<HTMLInputElement, BrutalInputProps>(
     const inputId = id || (label ? `brutal-input-${generatedId}` : undefined);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (uppercaseAlphanumeric && e.target.value) {
-        e.target.value = e.target.value.toUpperCase();
+      let nextValue = e.target.value;
+      if (alphanumericOnly) {
+        nextValue = nextValue.replace(/[^a-zA-Z0-9]/g, '');
+      }
+      if (uppercaseAlphanumeric) {
+        nextValue = nextValue.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      }
+      if (nextValue !== e.target.value) {
+        e.target.value = nextValue;
       }
       onChange?.(e);
     };
@@ -75,7 +84,7 @@ export const BrutalInput = React.forwardRef<HTMLInputElement, BrutalInputProps>(
             onChange={handleChange}
             className={clsx(
               'w-full py-2.5 px-3 rounded-xl bg-[#F5F0EA] border-2 border-black text-black font-display font-bold text-base',
-              'focus:outline-none focus:bg-[#ECFDF5] focus:shadow-[3px_3px_0px_#000000] placeholder:text-black/50 transition-all',
+              'focus:outline-none focus:bg-white focus:shadow-[2px_2px_0px_#000000] placeholder:text-black/50 transition-all',
               leftIcon && 'pl-10',
               uppercaseAlphanumeric && 'tracking-widest uppercase font-extrabold',
               flashHighlight && 'bg-[#FFF9C4] border-black shadow-[3px_3px_0px_#FFE600]',
