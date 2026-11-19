@@ -19,6 +19,8 @@ import { AppShell } from '../components/layout/AppShell';
 import {
   SUIT_SYMBOLS,
   RANK_LABELS,
+  SHUFFLE_RITUAL_TIMEOUT_SECONDS,
+  TACTICAL_Z_PATTERN,
   isKeyCard,
 } from '../constants/designTokens';
 import { Suit, PlayerScoreDetail, Player } from '../types/game';
@@ -44,6 +46,14 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
     playerId,
     playerName,
     roomCodeInput,
+    roundLogSnapshot,
+    shuffleStep,
+    shuffleAutoReshuffled,
+    sruputActiveByPlayer,
+    isTableCheering,
+    lastCheeredBy,
+    setShuffleStep,
+    triggerLoungeReaction,
     confirmRematch,
     leaveToLobby,
     showToast,
@@ -53,85 +63,93 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
     roomState?.id ||
     roomCodeInput ||
     'IB9GVM'
-  ).toUpperCase();
-  const roundNumber = roomState?.roundNumber || 1;
+  )
+    .replace(/^offline_/, '')
+    .toUpperCase();
+  const isOnlineMode = roomState?.mode === 'online';
+  const roundNumber = roundLogSnapshot?.roundNumber ?? roomState?.roundNumber ?? 1;
   const currentUserId = playerId || 'p1';
   const currentUserName = playerName || 'Sekop07';
 
   // --- 1. Identify Juru Kunci Loser & Ranked Scoreboard ---
-  const scoresMap = roomState?.scores;
+  const scoresMap = roundLogSnapshot?.scores ?? roomState?.scores;
+  const playersSource: Player[] = useMemo(() => {
+    if (roundLogSnapshot?.players && roundLogSnapshot.players.length > 0) {
+      return roundLogSnapshot.players;
+    }
+    if (roomState?.players && roomState.players.length > 0) {
+      return roomState.players;
+    }
+    return [
+      {
+        id: currentUserId,
+        name: currentUserName,
+        initials: getInitials(currentUserName),
+        avatarColor: '#10B981',
+        isBot: false,
+        isReady: true,
+        hand: [],
+        foldedCards: [],
+        penaltyPoints: 0,
+        lossesCount: 0,
+        consecutiveLosses: 0,
+        statusRtRw: 'NONE' as const,
+        isConnected: true,
+      },
+      {
+        id: 'bot_1',
+        name: 'Taktik7',
+        initials: 'T7',
+        avatarColor: '#3B82F6',
+        isBot: true,
+        isReady: true,
+        hand: [],
+        foldedCards: [],
+        penaltyPoints: 8,
+        lossesCount: 0,
+        consecutiveLosses: 0,
+        statusRtRw: 'NONE' as const,
+        isConnected: true,
+      },
+      {
+        id: 'bot_2',
+        name: 'Cermat8',
+        initials: 'C8',
+        avatarColor: '#8B5CF6',
+        isBot: true,
+        isReady: true,
+        hand: [],
+        foldedCards: [],
+        penaltyPoints: 19,
+        lossesCount: 0,
+        consecutiveLosses: 0,
+        statusRtRw: 'NONE' as const,
+        isConnected: true,
+      },
+      {
+        id: 'bot_3',
+        name: 'Agresif9',
+        initials: 'A9',
+        avatarColor: '#EC4899',
+        isBot: true,
+        isReady: true,
+        hand: [],
+        foldedCards: [],
+        penaltyPoints: 48,
+        lossesCount: 1,
+        consecutiveLosses: 1,
+        statusRtRw: 'NONE' as const,
+        isConnected: true,
+      },
+    ];
+  }, [roundLogSnapshot?.players, roomState?.players, currentUserId, currentUserName]);
+
   const rankedScores: PlayerScoreDetail[] = useMemo(() => {
     if (scoresMap && Object.keys(scoresMap).length > 0) {
       return Object.values(scoresMap).sort((a, b) => a.rankPosition - b.rankPosition);
     }
 
-    // Realistic fallback scores if not present in store
-    const playersList = roomState?.players && roomState.players.length > 0
-      ? roomState.players
-      : [
-          {
-            id: currentUserId,
-            name: currentUserName,
-            initials: getInitials(currentUserName),
-            avatarColor: '#10B981',
-            isBot: false,
-            isReady: true,
-            hand: [],
-            foldedCards: [],
-            penaltyPoints: 0,
-            lossesCount: 0,
-            consecutiveLosses: 0,
-            statusRtRw: 'NONE' as const,
-            isConnected: true,
-          },
-          {
-            id: 'bot_1',
-            name: 'Taktik7',
-            initials: 'T7',
-            avatarColor: '#3B82F6',
-            isBot: true,
-            isReady: true,
-            hand: [],
-            foldedCards: [],
-            penaltyPoints: 8,
-            lossesCount: 0,
-            consecutiveLosses: 0,
-            statusRtRw: 'NONE' as const,
-            isConnected: true,
-          },
-          {
-            id: 'bot_2',
-            name: 'Cermat8',
-            initials: 'C8',
-            avatarColor: '#8B5CF6',
-            isBot: true,
-            isReady: true,
-            hand: [],
-            foldedCards: [],
-            penaltyPoints: 19,
-            lossesCount: 0,
-            consecutiveLosses: 0,
-            statusRtRw: 'NONE' as const,
-            isConnected: true,
-          },
-          {
-            id: 'bot_3',
-            name: 'Agresif9',
-            initials: 'A9',
-            avatarColor: '#EC4899',
-            isBot: true,
-            isReady: true,
-            hand: [],
-            foldedCards: [],
-            penaltyPoints: 48,
-            lossesCount: 1,
-            consecutiveLosses: 1,
-            statusRtRw: 'NONE' as const,
-            isConnected: true,
-          },
-        ];
-
-    return playersList.map((p, idx) => ({
+    return playersSource.map((p, idx) => ({
       playerId: p.id,
       playerName: p.name,
       rankPosition: ((idx + 1) as 1 | 2 | 3 | 4),
@@ -143,41 +161,75 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
       isWinner: idx === 0,
       isJuruKunci: idx === 3,
     }));
-  }, [scoresMap, roomState?.players, currentUserId, currentUserName]);
+  }, [scoresMap, playersSource]);
 
-  // Identify Juru Kunci loser
+  // Identify Juru Kunci loser (prefer explicit server shufflerId when present)
   const loser = useMemo(() => {
+    if (roomState?.shufflerId) {
+      const byShufflerId = rankedScores.find((s) => s.playerId === roomState.shufflerId);
+      if (byShufflerId) return byShufflerId;
+    }
     return (
       rankedScores.find((s) => s.isJuruKunci) ||
       rankedScores.find((s) => s.rankPosition === 4) ||
       rankedScores[rankedScores.length - 1]
     );
-  }, [rankedScores]);
+  }, [rankedScores, roomState?.shufflerId]);
 
-  const isLocalUserJuruKunci = loser?.playerId === currentUserId;
-  const loserName = loser?.playerName || 'Sekop07';
+  const loserId = roomState?.shufflerId || loser?.playerId || currentUserId;
+  const loserPlayer = useMemo(
+    () => playersSource.find((p) => p.id === loserId),
+    [playersSource, loserId]
+  );
+
+  const isLocalUserJuruKunci = loserId === currentUserId;
+  const loserName = loserPlayer?.name || loser?.playerName || 'Sekop07';
   const loserPenalty = loser?.totalPenalty ?? 48;
-  const loserInitials = loser ? getInitials(loser.playerName) : 'S7';
+  const loserInitials = loserPlayer?.initials || getInitials(loserName);
 
   // Opener card & Ace mode for Round Log modal
-  const openerSuit: Suit = roomState?.openerSuit || 'spades';
-  const aceMode = roomState?.aceMode || 'LOCKED_NONE';
+  const openerSuit: Suit = roundLogSnapshot?.openerSuit ?? roomState?.openerSuit ?? 'spades';
+  const aceMode = roundLogSnapshot?.aceMode ?? roomState?.aceMode ?? 'LOCKED_NONE';
 
   // --- Handlers & Rematch Transition ---
   const [rematchTriggered, setRematchTriggered] = useState(false);
+  const rematchTriggeredRef = useRef(false);
+  const pendingTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const triggerRematchTransition = useCallback(() => {
-    if (rematchTriggered) return;
-    setRematchTriggered(true);
+  const scheduleTimeout = useCallback((fn: () => void, delayMs: number) => {
+    const id = setTimeout(fn, delayMs);
+    pendingTimeoutsRef.current.push(id);
+    return id;
+  }, []);
 
-    if (roomState?.mode === 'online') {
-      wsClient.sendRematch(roomState.id, currentUserId);
-    }
-    confirmRematch();
-    if (onCompleteRematch) {
-      onCompleteRematch();
-    }
-  }, [rematchTriggered, roomState?.mode, roomState?.id, currentUserId, confirmRematch, onCompleteRematch]);
+  useEffect(() => {
+    return () => {
+      pendingTimeoutsRef.current.forEach((id) => clearTimeout(id));
+      pendingTimeoutsRef.current = [];
+    };
+  }, []);
+
+  const triggerRematchTransition = useCallback(
+    (autoReshuffle = false) => {
+      if (rematchTriggeredRef.current) return;
+      rematchTriggeredRef.current = true;
+      setRematchTriggered(true);
+
+      if (isOnlineMode && roomState?.id) {
+        // Online mode: notify server that shuffle step 3 (or auto-reshuffle) is done;
+        // server transitions room.status -> 'playing' and broadcasts room_state.
+        wsClient.sendShuffleProgress(roomState.id, 3, autoReshuffle);
+        return;
+      }
+
+      // Offline / standalone mode: deal new round in store and enter gameplay
+      confirmRematch();
+      if (onCompleteRematch) {
+        onCompleteRematch();
+      }
+    },
+    [isOnlineMode, roomState?.id, confirmRematch, onCompleteRematch]
+  );
 
   const handleReturnToLobby = () => {
     if (onReturnToLobby) {
@@ -190,11 +242,15 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
   // --- Modal Log Ronde State ---
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 
+  // --- Synchronized 14-Second Shuffle Timer (PRD F4 & DESIGN.md 4.5/4.6) ---
+  const [countdown, setCountdown] = useState<number>(SHUFFLE_RITUAL_TIMEOUT_SECONDS);
+  const [isAutoReshuffleTriggered, setIsAutoReshuffleTriggered] = useState<boolean>(false);
+
   // =========================================================================
   // BRANCH A: Local User IS Juru Kunci (Kocok Kartu Manual - 9 Titik Interaktif)
   // Stitch Screen: 9ce664cdd7d544b78bf0361256d16d11
   // =========================================================================
-  const TARGET_PATTERN = useMemo(() => [0, 2, 6, 8], []); // Tactical-Z: 0 -> 2 -> 6 -> 8
+  const TARGET_PATTERN = TACTICAL_Z_PATTERN; // Tactical-Z: 0 -> 2 -> 6 -> 8
   const [userSequence, setUserSequence] = useState<number[]>([]);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [failCount, setFailCount] = useState<number>(0);
@@ -206,6 +262,70 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
   const stageRef = useRef<HTMLDivElement>(null);
   const isDrawingRef = useRef<boolean>(false);
   const userSequenceRef = useRef<number[]>([]);
+
+  // Reset ritual state when entering a fresh round/shuffler session
+  useEffect(() => {
+    setCountdown(SHUFFLE_RITUAL_TIMEOUT_SECONDS);
+    setIsAutoReshuffleTriggered(false);
+    setRematchTriggered(false);
+    rematchTriggeredRef.current = false;
+    setCurrentStep(1);
+    setFailCount(0);
+    setUserSequence([]);
+    userSequenceRef.current = [];
+    setTempPointerPos(null);
+    setIsErrorLine(false);
+    setStatusText('MENUNGGU GORESAN...');
+  }, [roomState?.id, roundNumber, isLocalUserJuruKunci]);
+
+  // Synchronized 14s countdown across both Branch A and Branch B
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (rematchTriggeredRef.current) return prev;
+        return prev > 0 ? prev - 1 : 0;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [roomState?.id, roundNumber, isLocalUserJuruKunci]);
+
+  // 14s Anti-Stall Auto-Reshuffle trigger when countdown hits 0
+  useEffect(() => {
+    if (countdown > 0 || rematchTriggeredRef.current || isAutoReshuffleTriggered) return;
+
+    if (isLocalUserJuruKunci || !isOnlineMode) {
+      setIsAutoReshuffleTriggered(true);
+      setIsErrorLine(false);
+      setStatusText('AUTO-RESHUFFLE AKTIF!');
+      setShuffleStep(3, true);
+      showToast('⚡', 'Waktu habis! AUTO-RESHUFFLE AKTIF!');
+      scheduleTimeout(() => {
+        triggerRematchTransition(true);
+      }, 800);
+      return;
+    }
+
+    // Online Branch B anti-stall fallback if server timer hasn't transitioned yet
+    setIsAutoReshuffleTriggered(true);
+    setShuffleStep(3, true);
+    scheduleTimeout(() => {
+      if (!rematchTriggeredRef.current && roomState?.id) {
+        triggerRematchTransition(true);
+      }
+    }, 1000);
+  }, [
+    countdown,
+    isAutoReshuffleTriggered,
+    isLocalUserJuruKunci,
+    isOnlineMode,
+    roomState?.id,
+    scheduleTimeout,
+    setShuffleStep,
+    showToast,
+    triggerRematchTransition,
+  ]);
+
+  const formattedCountdown = `00:${String(countdown).padStart(2, '0')}`;
 
   // Keep ref synchronized
   useEffect(() => {
@@ -257,12 +377,13 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
 
   const triggerCardShuffleAnim = useCallback(() => {
     setIsShufflingCards(true);
-    setTimeout(() => {
+    scheduleTimeout(() => {
       setIsShufflingCards(false);
     }, 400);
-  }, []);
+  }, [scheduleTimeout]);
 
   const checkPattern = useCallback(() => {
+    if (rematchTriggeredRef.current || isAutoReshuffleTriggered) return;
     const seq = userSequenceRef.current;
     if (seq.length === 0) return;
 
@@ -276,19 +397,28 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
       triggerCardShuffleAnim();
 
       if (currentStep === 1) {
-        setTimeout(() => {
+        if (isOnlineMode && roomState?.id) {
+          wsClient.sendShuffleProgress(roomState.id, 1, false);
+        }
+        setShuffleStep(2, false);
+        scheduleTimeout(() => {
           setCurrentStep(2);
           resetCurrentCanvas();
         }, 500);
       } else if (currentStep === 2) {
-        setTimeout(() => {
+        if (isOnlineMode && roomState?.id) {
+          wsClient.sendShuffleProgress(roomState.id, 2, false);
+        }
+        setShuffleStep(3, false);
+        scheduleTimeout(() => {
           setCurrentStep(3);
           resetCurrentCanvas();
         }, 500);
       } else {
         setStatusText('DEK TERKOCOK LENGKAP!');
-        setTimeout(() => {
-          triggerRematchTransition();
+        setShuffleStep(3, false);
+        scheduleTimeout(() => {
+          triggerRematchTransition(false);
         }, 700);
       }
     } else {
@@ -298,21 +428,35 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
       setStatusText(`POLA SALAH (${nextFail}/3)`);
 
       if (nextFail >= 3) {
+        setIsAutoReshuffleTriggered(true);
         setStatusText('AUTO-RESHUFFLE AKTIF!');
-        setTimeout(() => {
-          triggerRematchTransition();
+        setShuffleStep(3, true);
+        scheduleTimeout(() => {
+          triggerRematchTransition(true);
         }, 800);
       } else {
-        setTimeout(() => {
+        scheduleTimeout(() => {
           resetCurrentCanvas();
         }, 800);
       }
     }
-  }, [currentStep, failCount, resetCurrentCanvas, triggerCardShuffleAnim, triggerRematchTransition, TARGET_PATTERN]);
+  }, [
+    TARGET_PATTERN,
+    currentStep,
+    failCount,
+    isAutoReshuffleTriggered,
+    isOnlineMode,
+    resetCurrentCanvas,
+    roomState?.id,
+    scheduleTimeout,
+    setShuffleStep,
+    triggerCardShuffleAnim,
+    triggerRematchTransition,
+  ]);
 
   // Pointer event handlers for cross-platform drawing
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (currentStep > 3 && failCount < 3) return;
+    if (rematchTriggeredRef.current || isAutoReshuffleTriggered || countdown === 0) return;
     isDrawingRef.current = true;
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     handleDotHit(e.clientX, e.clientY);
@@ -353,11 +497,7 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
   // BRANCH B: Another Player or Bot IS Juru Kunci (Waiting Lounge - Santai Kawan)
   // Stitch Screen: 96b7f2bda2f94721ba330fac7f1f989a
   // =========================================================================
-  const [botStep, setBotStep] = useState<1 | 2 | 3>(1);
-  const [countdown, setCountdown] = useState<number>(5);
   const [shufflerActionIndex, setShufflerActionIndex] = useState<number>(0);
-  const [sruputFeedback, setSruputFeedback] = useState<boolean>(false);
-  const [cheerFeedback, setCheerFeedback] = useState<boolean>(false);
 
   const shufflerActions = useMemo(
     () => [
@@ -378,29 +518,22 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
     return () => clearInterval(interval);
   }, [isLocalUserJuruKunci, shufflerActions.length]);
 
-  // Countdown timer in Branch B
+  // Automated step progression (~4.5 seconds total) ONLY in offline / standalone mode;
+  // in online mode, progress is driven by backend shuffle_progress & room_state WS events.
   useEffect(() => {
-    if (isLocalUserJuruKunci) return;
-    const timer = setInterval(() => {
-      setCountdown((prev) => (prev > 1 ? prev - 1 : 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [isLocalUserJuruKunci]);
+    if (isLocalUserJuruKunci || isOnlineMode) return;
 
-  // Automated step progression (~4.5 seconds total) for bot shuffler
-  useEffect(() => {
-    if (isLocalUserJuruKunci) return;
-
+    setShuffleStep(1, false);
     const t1 = setTimeout(() => {
-      setBotStep(2);
+      setShuffleStep(2, false);
     }, 1500);
 
     const t2 = setTimeout(() => {
-      setBotStep(3);
+      setShuffleStep(3, false);
     }, 3000);
 
     const t3 = setTimeout(() => {
-      triggerRematchTransition();
+      triggerRematchTransition(false);
     }, 4500);
 
     return () => {
@@ -408,30 +541,40 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
       clearTimeout(t2);
       clearTimeout(t3);
     };
-  }, [isLocalUserJuruKunci, triggerRematchTransition]);
+  }, [isLocalUserJuruKunci, isOnlineMode, setShuffleStep, triggerRematchTransition]);
 
   // Interactive buttons in Waiting Lounge
   const handleCoffeeReaction = () => {
-    setSruputFeedback(true);
+    if (isOnlineMode && roomState?.id) {
+      wsClient.sendLoungeReaction(roomState.id, 'sruput', currentUserId);
+    }
+    triggerLoungeReaction({
+      reaction: 'sruput',
+      senderId: currentUserId,
+      senderName: currentUserName,
+    });
     showToast('☕', 'Slruurpp! Kopi diseruput hangat.');
-    setTimeout(() => {
-      setSruputFeedback(false);
-    }, 1200);
   };
 
   const handleCheerReaction = () => {
-    setCheerFeedback(true);
-    showToast('🔥', 'Menyemangati pengocok kartu di meja!');
-    setTimeout(() => {
-      setCheerFeedback(false);
-    }, 1500);
+    if (isOnlineMode && roomState?.id) {
+      wsClient.sendLoungeReaction(roomState.id, 'cheer', currentUserId);
+    } else {
+      triggerLoungeReaction({
+        reaction: 'cheer',
+        senderId: currentUserId,
+        senderName: currentUserName,
+      });
+    }
   };
+
+  const isLocalSruputActive = Boolean(sruputActiveByPlayer[currentUserId]);
 
   // Other players waiting in lounge (excluding Juru Kunci)
   const waitingPlayers: Player[] = useMemo(() => {
-    const all = roomState?.players || [];
-    return all.filter((p) => p.id !== loser?.playerId);
-  }, [roomState?.players, loser?.playerId]);
+    return playersSource.filter((p) => p.id !== loserId);
+  }, [playersSource, loserId]);
+  const totalTablePlayers = Math.max(4, playersSource.length || 4);
 
   return (
     <AppShell variant="surface">
@@ -440,24 +583,35 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
         className="fixed top-0 inset-x-0 z-50 pt-safe bg-[#10B981] border-b-[3px] border-black shadow-[0_2px_10px_rgba(0,0,0,0.08)]"
         id="shuffle-ritual-header"
       >
-        <div className="max-w-md mx-auto h-16 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-md mx-auto h-16 px-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               id="btn-return-lobby"
               aria-label="Kembali"
               type="button"
               onClick={handleReturnToLobby}
-              className="w-10 h-10 flex items-center justify-center text-black bg-white rounded-lg border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-transform cursor-pointer"
+              className="w-10 h-10 flex items-center justify-center text-black bg-white rounded-lg border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-transform cursor-pointer shrink-0"
             >
               <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
             </button>
-            <h1 className="font-display text-lg font-black uppercase tracking-tight text-black">
+            <h1 className="font-display text-base sm:text-lg font-black uppercase tracking-tight text-black truncate">
               RITUAL KOCOK KARTU
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded bg-black text-[#FFE600] font-display text-[10px] font-bold uppercase tracking-wider border border-black">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="px-2 py-0.5 rounded bg-black text-[#FFE600] font-display text-[10px] font-bold uppercase tracking-wider border border-black whitespace-nowrap">
               RONDE {roundNumber + 1}
+            </span>
+            <span
+              id="header-countdown-pill"
+              className={clsx(
+                'px-2 py-0.5 rounded font-display text-[10px] font-black uppercase tracking-wider border-2 border-black shadow-[1px_1px_0px_#000000] tabular-nums whitespace-nowrap',
+                countdown <= 4
+                  ? 'bg-[#FF4343] text-white animate-pulse'
+                  : 'bg-white text-black'
+              )}
+            >
+              ⏳ {formattedCountdown}
             </span>
           </div>
         </div>
@@ -499,9 +653,16 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                 </div>
                 <div
                   id="round-badge"
-                  className="px-2.5 py-1 rounded bg-[#FFE600] text-black font-display text-xs font-black uppercase border border-black shadow-[1px_1px_0px_#000000]"
+                  className={clsx(
+                    'px-2.5 py-1 rounded font-display text-xs font-black uppercase border border-black shadow-[1px_1px_0px_#000000]',
+                    isAutoReshuffleTriggered
+                      ? 'bg-[#FF4343] text-white'
+                      : 'bg-[#FFE600] text-black'
+                  )}
                 >
-                  PUTARAN {currentStep} / 3
+                  {isAutoReshuffleTriggered
+                    ? 'AUTO-RESHUFFLE!'
+                    : `PUTARAN ${currentStep} / 3`}
                 </div>
               </div>
 
@@ -511,18 +672,20 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                   id="step-1"
                   className={clsx(
                     'h-3 rounded border border-black transition-all flex items-center justify-center',
-                    currentStep >= 1 ? 'bg-[#10B981]' : 'bg-[#DAE2FD]'
+                    isAutoReshuffleTriggered || rematchTriggered || currentStep > 1
+                      ? 'bg-[#10B981]'
+                      : 'bg-[#FFE600]'
                   )}
                 >
-                  {currentStep >= 1 && <span className="w-1.5 h-1.5 rounded-full bg-black" />}
+                  <span className="w-1.5 h-1.5 rounded-full bg-black" />
                 </div>
                 <div
                   id="step-2"
                   className={clsx(
                     'h-3 rounded border border-black transition-all flex items-center justify-center',
-                    currentStep >= 2
+                    isAutoReshuffleTriggered || rematchTriggered || currentStep > 2
                       ? 'bg-[#10B981]'
-                      : currentStep === 1
+                      : currentStep === 2
                       ? 'bg-[#FFE600]'
                       : 'bg-[#DAE2FD]'
                   )}
@@ -533,9 +696,17 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                   id="step-3"
                   className={clsx(
                     'h-3 rounded border border-black transition-all flex items-center justify-center',
-                    currentStep === 3 ? 'bg-[#FFE600]' : 'bg-[#DAE2FD]'
+                    isAutoReshuffleTriggered || rematchTriggered
+                      ? 'bg-[#10B981]'
+                      : currentStep === 3
+                      ? 'bg-[#FFE600]'
+                      : 'bg-[#DAE2FD]'
                   )}
-                />
+                >
+                  {(currentStep === 3 || isAutoReshuffleTriggered || rematchTriggered) && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-black" />
+                  )}
+                </div>
               </div>
 
               <p className="font-body text-xs text-slate-700 leading-snug">
@@ -570,7 +741,7 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                   </svg>
                   <div className="grid grid-cols-3 gap-2 w-full h-full p-2 place-items-center">
                     {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((dotIdx) => {
-                      const isTarget = TARGET_PATTERN.includes(dotIdx);
+                      const isTarget = (TARGET_PATTERN as readonly number[]).includes(dotIdx);
                       return (
                         <div
                           key={`target-dot-${dotIdx}`}
@@ -774,7 +945,25 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
           /* ========================================================================= */
           /* BRANCH B: Another Player or Bot is Juru Kunci (Waiting Lounge)           */
           /* ========================================================================= */
-          <div className="flex flex-col gap-4">
+          <div
+            className={clsx(
+              'flex flex-col gap-4 rounded-2xl transition-all duration-300',
+              isTableCheering && 'ring-4 ring-[#FFE600] bg-[#FFE600]/10 p-1 -m-1'
+            )}
+          >
+            {/* Live Cheer Banner (1.5s highlight across the screen) */}
+            {isTableCheering && (
+              <div
+                id="table-cheer-banner"
+                className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-[#FFE600] border-[3px] border-black shadow-[3px_3px_0px_#000000] animate-bounce"
+              >
+                <Flame className="w-4 h-4 text-[#FF4343] stroke-[2.5]" />
+                <span className="font-display text-xs font-black uppercase text-black tracking-wide">
+                  {lastCheeredBy || 'Kawan'} MENYEMANGATI PENGOCOK KARTU!
+                </span>
+              </div>
+            )}
+
             {/* Status Room & Tactical Bar */}
             <div className="flex items-center justify-between bg-[#F2F3FF] p-3 rounded-xl border-[3px] border-black shadow-[3px_3px_0px_#000000]">
               <div className="flex items-center gap-2">
@@ -788,7 +977,9 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-ping" />
                 <span className="font-display text-[11px] text-black uppercase font-bold tracking-wide">
-                  MENYIAPKAN RONDE
+                  {isAutoReshuffleTriggered || shuffleAutoReshuffled
+                    ? 'AUTO-RESHUFFLE AKTIF!'
+                    : 'MENYIAPKAN RONDE'}
                 </span>
               </div>
             </div>
@@ -802,8 +993,16 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                 <span className="px-2 py-0.5 rounded bg-white text-black font-display text-[10px] border-2 border-black uppercase font-black">
                   RITUAL WAJIB KALAH
                 </span>
-                <span className="flex items-center gap-1 font-display text-xs font-black text-black">
-                  <span>⏳ 00:0{countdown}</span>
+                <span
+                  id="countdown-timer"
+                  className={clsx(
+                    'flex items-center gap-1 px-2 py-0.5 rounded border border-black font-display text-xs font-black tabular-nums',
+                    countdown <= 4
+                      ? 'bg-[#FF4343] text-white animate-pulse'
+                      : 'bg-white/80 text-black'
+                  )}
+                >
+                  <span>⏳ {formattedCountdown}</span>
                 </span>
               </div>
 
@@ -821,6 +1020,11 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                     <p className="font-display text-sm text-black truncate font-bold">
                       {loserName}
                     </p>
+                    {loserPlayer?.isBot && (
+                      <span className="px-1.5 py-0.2 rounded bg-[#283044] text-white font-display text-[9px] border border-black uppercase font-bold">
+                        BOT
+                      </span>
+                    )}
                     <span className="text-xs">😞</span>
                   </div>
                   <div>
@@ -933,11 +1137,18 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                 </span>
                 <span
                   id="pattern-phase-label"
-                  className="font-display text-[10px] font-bold px-2 py-0.5 rounded bg-[#FFE600] border border-black text-black whitespace-nowrap"
+                  className={clsx(
+                    'font-display text-[10px] font-bold px-2 py-0.5 rounded border border-black whitespace-nowrap',
+                    isAutoReshuffleTriggered || shuffleAutoReshuffled
+                      ? 'bg-[#FF4343] text-white'
+                      : 'bg-[#FFE600] text-black'
+                  )}
                 >
-                  {botStep === 1
+                  {isAutoReshuffleTriggered || shuffleAutoReshuffled
+                    ? 'AUTO-RESHUFFLE AKTIF!'
+                    : shuffleStep === 1
                     ? 'Pola 1/3 Berjalan...'
-                    : botStep === 2
+                    : shuffleStep === 2
                     ? 'Pola 2/3 Berjalan...'
                     : 'Pola 3/3 Selesai!'}
                 </span>
@@ -949,36 +1160,44 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                 <div
                   className={clsx(
                     'h-4 rounded border-2 border-black shadow-[2px_2px_0px_#000000] flex items-center justify-center transition-all',
-                    botStep >= 1 ? 'bg-[#10B981]' : 'bg-slate-200'
-                  )}
-                >
-                  <Check className="w-3 h-3 text-black stroke-[3]" />
-                </div>
-                {/* Segment 2 */}
-                <div
-                  className={clsx(
-                    'h-4 rounded border-2 border-black shadow-[2px_2px_0px_#000000] flex items-center justify-center transition-all relative overflow-hidden',
-                    botStep >= 2
+                    shuffleStep >= 2 || isAutoReshuffleTriggered || shuffleAutoReshuffled
                       ? 'bg-[#10B981]'
-                      : botStep === 1
-                      ? 'bg-[#FFE600]'
-                      : 'bg-slate-200'
+                      : 'bg-[#FFE600]'
                   )}
                 >
-                  {botStep >= 2 ? (
+                  {shuffleStep >= 2 || isAutoReshuffleTriggered || shuffleAutoReshuffled ? (
                     <Check className="w-3 h-3 text-black stroke-[3]" />
                   ) : (
                     <span className="text-[10px] font-black animate-ping">●</span>
                   )}
                 </div>
+                {/* Segment 2 */}
+                <div
+                  className={clsx(
+                    'h-4 rounded border-2 border-black shadow-[2px_2px_0px_#000000] flex items-center justify-center transition-all relative overflow-hidden',
+                    shuffleStep === 3 || isAutoReshuffleTriggered || shuffleAutoReshuffled
+                      ? 'bg-[#10B981]'
+                      : shuffleStep === 2
+                      ? 'bg-[#FFE600]'
+                      : 'bg-slate-200'
+                  )}
+                >
+                  {shuffleStep === 3 || isAutoReshuffleTriggered || shuffleAutoReshuffled ? (
+                    <Check className="w-3 h-3 text-black stroke-[3]" />
+                  ) : shuffleStep === 2 ? (
+                    <span className="text-[10px] font-black animate-ping">●</span>
+                  ) : null}
+                </div>
                 {/* Segment 3 */}
                 <div
                   className={clsx(
                     'h-4 rounded border-2 border-black shadow-[2px_2px_0px_#000000] flex items-center justify-center transition-all',
-                    botStep === 3 ? 'bg-[#FFE600]' : 'bg-slate-200'
+                    shuffleStep === 3 || isAutoReshuffleTriggered || shuffleAutoReshuffled
+                      ? 'bg-[#10B981]'
+                      : 'bg-slate-200'
                   )}
                 >
-                  {botStep === 3 && (
+                  {(shuffleStep === 3 || isAutoReshuffleTriggered || shuffleAutoReshuffled) && (
                     <Check className="w-3 h-3 text-black stroke-[3]" />
                   )}
                 </div>
@@ -990,7 +1209,7 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
               <div className="flex items-center justify-between pb-2 mb-2 border-b-2 border-black">
                 <span className="font-display text-xs uppercase font-black text-black flex items-center gap-1.5">
                   <span>☕</span>
-                  KONDISI PEMAIN DI MEJA (3/4)
+                  KONDISI PEMAIN DI MEJA ({waitingPlayers.length}/{totalTablePlayers})
                 </span>
                 <span className="font-display text-[10px] bg-[#10B981] text-black px-2 py-0.5 rounded border border-black font-black whitespace-nowrap">
                   SEMUA SIAP
@@ -1024,10 +1243,13 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                     id="coffee-reaction-btn"
                     type="button"
                     onClick={handleCoffeeReaction}
-                    className="px-2.5 py-1 rounded bg-[#FFE600] text-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none flex items-center gap-1 font-display text-xs font-black flex-shrink-0 cursor-pointer"
+                    className={clsx(
+                      'px-2.5 py-1 rounded text-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none flex items-center gap-1 font-display text-xs font-black flex-shrink-0 cursor-pointer transition-transform',
+                      isLocalSruputActive ? 'bg-[#00D084] scale-105' : 'bg-[#FFE600]'
+                    )}
                   >
                     <span>☕</span>
-                    <span>{sruputFeedback ? 'Slruurpp!' : 'Sruput'}</span>
+                    <span>{isLocalSruputActive ? 'Slruurpp!' : 'Sruput'}</span>
                   </button>
                 </div>
 
@@ -1035,10 +1257,12 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                 {waitingPlayers
                   .filter((p) => p.id !== currentUserId)
                   .map((p, pIdx) => {
-                    const quote =
-                      pIdx === 0
+                    const isPlayerSruput = Boolean(sruputActiveByPlayer[p.id]);
+                    const quote = p.isBot
+                      ? pIdx === 0
                         ? '🚬 Santuy di pojok kursi'
-                        : '🥤 Menatap kartu lawan';
+                        : '🥤 Menatap kartu lawan'
+                      : '☕ Menunggu kocokan selesai';
                     return (
                       <div
                         key={p.id}
@@ -1057,7 +1281,7 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                                 {p.name}
                               </span>
                               {p.isBot && (
-                                <span className="px-1.5 py-0.2 rounded bg-slate-200 text-black font-display text-[9px] border border-black uppercase font-bold">
+                                <span className="px-1.5 py-0.2 rounded bg-[#283044] text-white font-display text-[9px] border border-black uppercase font-bold">
                                   BOT
                                 </span>
                               )}
@@ -1067,9 +1291,15 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                             </span>
                           </div>
                         </div>
-                        <span className="font-display text-[10px] px-2 py-0.5 rounded bg-[#4EDEA3] text-black border border-black font-bold flex-shrink-0 whitespace-nowrap">
-                          SIAP DI MEJA
-                        </span>
+                        {isPlayerSruput ? (
+                          <span className="font-display text-[10px] px-2 py-0.5 rounded bg-[#FFE600] text-black border-2 border-black shadow-[1px_1px_0px_#000000] font-black flex-shrink-0 whitespace-nowrap animate-bounce">
+                            ☕ Slruurpp!
+                          </span>
+                        ) : (
+                          <span className="font-display text-[10px] px-2 py-0.5 rounded bg-[#4EDEA3] text-black border border-black font-bold flex-shrink-0 whitespace-nowrap">
+                            SIAP DI MEJA
+                          </span>
+                        )}
                       </div>
                     );
                   })}
@@ -1084,10 +1314,10 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                 onClick={handleCheerReaction}
                 className={clsx(
                   'py-2.5 px-3 rounded-lg text-black font-display text-xs font-black uppercase tracking-wider border-[3px] border-black shadow-[3px_3px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none flex items-center justify-center gap-1.5 transition-colors cursor-pointer',
-                  cheerFeedback ? 'bg-[#FFE600]' : 'bg-white hover:bg-slate-50'
+                  isTableCheering ? 'bg-[#FFE600]' : 'bg-white hover:bg-slate-50'
                 )}
               >
-                {cheerFeedback ? (
+                {isTableCheering ? (
                   <>
                     <Flame className="w-4 h-4 text-[#FF4343] stroke-[2.5]" />
                     <span>🔥 DISEMANGATI!</span>
@@ -1196,6 +1426,11 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                   {rankedScores.map((scoreEntry) => {
                     const isLoser = scoreEntry.isJuruKunci || scoreEntry.rankPosition === 4;
                     const isWinner = scoreEntry.isWinner || scoreEntry.rankPosition === 1;
+                    const matchedPlayer = playersSource.find(
+                      (p) => p.id === scoreEntry.playerId
+                    );
+                    const isMe = scoreEntry.playerId === currentUserId;
+                    const isBotPlayer = Boolean(matchedPlayer?.isBot);
 
                     // Detail folded cards label
                     const foldedSummary =
@@ -1204,8 +1439,8 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                             .map((fc) => {
                               const rLabel = RANK_LABELS[fc.card.rank];
                               const sSym = SUIT_SYMBOLS[fc.card.suit];
-                              return isKeyCard(fc.card)
-                                ? `${rLabel}${sSym} (+30)`
+                              return isKeyCard(fc.card) || fc.isKeyCardPenalty
+                                ? `${rLabel}${sSym} 🔑 (+30)`
                                 : `${rLabel}${sSym}`;
                             })
                             .join(' ')}`
@@ -1237,17 +1472,21 @@ export const ShuffleRitualScreen: React.FC<ShuffleRitualScreenProps> = ({
                             {scoreEntry.rankPosition}
                           </span>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 flex-wrap">
                               <span className="font-display text-xs font-bold text-black truncate">
                                 {scoreEntry.playerName}
                               </span>
-                              {scoreEntry.playerId === currentUserId ? (
+                              {isMe ? (
                                 <span className="px-1 rounded bg-[#E1E7FF] text-black text-[9px] font-bold border border-black uppercase">
                                   Anda
                                 </span>
-                              ) : (
-                                <span className="px-1 rounded bg-slate-200 text-black text-[9px] font-bold border border-black uppercase">
+                              ) : isBotPlayer ? (
+                                <span className="px-1 rounded bg-[#283044] text-white text-[9px] font-bold border border-black uppercase">
                                   BOT
+                                </span>
+                              ) : (
+                                <span className="px-1 rounded bg-white text-black text-[9px] font-bold border border-black uppercase">
+                                  PEMAIN
                                 </span>
                               )}
                               {isLoser && (
