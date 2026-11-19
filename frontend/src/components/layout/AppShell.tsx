@@ -36,7 +36,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       style={isFelt ? { background: FELT_BACKGROUND_GRADIENT } : undefined}
       data-variant={variant}
     >
-      <div className="w-full max-w-md mx-auto flex flex-col flex-1 relative min-h-screen">
+      <div className="w-full max-w-md mx-auto flex flex-col flex-1 relative min-h-screen overflow-x-hidden">
         {children}
       </div>
     </div>
