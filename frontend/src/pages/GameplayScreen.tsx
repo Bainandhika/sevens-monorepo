@@ -122,43 +122,52 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
 
     const defaultOpponent2: Player = {
       id: 'bot_1',
-      name: 'Bot Taktis',
-      initials: 'BT',
+      name: 'Taktik7',
+      initials: 'T7',
       avatarColor: '#4F46E5',
       isBot: true,
+      botLevel: 'hard',
       isReady: true,
       hand: [],
       foldedCards: [],
       penaltyPoints: 0,
       lossesCount: 1,
+      consecutiveLosses: 0,
+      statusRtRw: 'NONE',
       isConnected: false,
     };
 
     const defaultOpponent3: Player = {
       id: 'bot_2',
-      name: 'Bot Cermat',
-      initials: 'BC',
+      name: 'Cermat8',
+      initials: 'C8',
       avatarColor: '#F59E0B',
       isBot: true,
+      botLevel: 'hard',
       isReady: true,
       hand: [],
       foldedCards: [],
       penaltyPoints: 0,
       lossesCount: 0,
+      consecutiveLosses: 0,
+      statusRtRw: 'NONE',
       isConnected: false,
     };
 
     const defaultOpponent4: Player = {
       id: 'bot_3',
-      name: 'Bot Agresif',
-      initials: 'BA',
+      name: 'Agresif9',
+      initials: 'A9',
       avatarColor: '#A855F7',
       isBot: true,
+      botLevel: 'hard',
       isReady: true,
       hand: [],
       foldedCards: [],
       penaltyPoints: 0,
       lossesCount: 3,
+      consecutiveLosses: 3,
+      statusRtRw: 'RT',
       isConnected: false,
     };
 
@@ -190,29 +199,55 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
   const isOpponent3Turn = Boolean(currentTurnId && currentTurnId === opponent3.id);
   const isOpponent4Turn = Boolean(currentTurnId && currentTurnId === opponent4.id);
 
+  const isOnlineMode = roomState?.mode === 'online';
+
   // Play Card handler (via button, central board slot tap, or double-tap)
+  // Online mode emits strictly via onSendPlayCard; offline mode delegates to prop or store.
   const handlePlayCard = (card: Card) => {
     if (onSendPlayCard) {
       onSendPlayCard(card);
+      return;
     }
-    playSelectedCard(card);
+    if (!isOnlineMode) {
+      playSelectedCard(card);
+    }
   };
 
   // Fold Card request handler (validates Anti-Bohong, Anti-Sabotase, and Key Card Warning)
   const handleRequestFoldCard = (card: Card) => {
     const isKey = isKeyCard(card);
-    attemptFoldCard(card);
 
-    // If card is non-key, fold is executed synchronously by the store if valid
-    if (!isKey && validMoves.length === 0 && card.rank !== 7) {
-      onSendFoldCard?.(card);
+    // Key card (6 or 8): always trigger KeyCardWarningModal first; only emit fold after modal confirms
+    if (isKey) {
+      attemptFoldCard(card);
+      return;
     }
+
+    if (isOnlineMode) {
+      // Run store validation checks (Anti-Bohong & Anti-Sabotase) without mutating online state
+      if (validMoves.length > 0 || card.rank === 7) {
+        attemptFoldCard(card);
+        return;
+      }
+      onSendFoldCard?.(card);
+      selectCard(null);
+      return;
+    }
+
+    if (onSendFoldCard) {
+      onSendFoldCard(card);
+      return;
+    }
+    attemptFoldCard(card);
   };
 
   // Confirm Key Card fold from KeyCardWarningModal
   const handleConfirmFoldKeyCard = (card: Card) => {
-    if (onSendFoldCard) {
-      onSendFoldCard(card);
+    if (isOnlineMode) {
+      setModal('none');
+      selectCard(null);
+      onSendFoldCard?.(card);
+      return;
     }
     confirmFoldKeyCard();
   };
@@ -242,15 +277,15 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
         <header
           role="banner"
           aria-label="Header Meja Permainan"
-          className="w-full py-2 px-3 bg-white border-b-[2.5px] border-black flex items-center justify-between z-30 shrink-0 select-none shadow-[0px_2px_0px_#000000]"
+          className="w-full py-2 px-3 bg-white border-b-[3px] border-black flex items-center justify-between gap-2 z-30 shrink-0 select-none shadow-[0px_2px_0px_#000000]"
         >
           {/* Sisi Kiri: Tombol Burger + Judul 7-an + Kode Room + Ronde */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <button
               type="button"
               aria-label="Buka Menu Samping"
               onClick={() => setDrawerOpen(true)}
-              className="w-8 h-8 rounded-lg bg-[#FFE600] hover:bg-yellow-300 border-2 border-black flex items-center justify-center text-black active:translate-x-0.5 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_#000000] focus:outline-none cursor-pointer"
+              className="w-9 h-9 rounded-lg bg-[#FFE600] hover:bg-yellow-300 border-2 border-black flex items-center justify-center text-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] transition-all shadow-[2px_2px_0px_#000000] focus:outline-none cursor-pointer shrink-0"
             >
               <svg
                 className="w-4 h-4 stroke-black"
@@ -275,7 +310,7 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
                 </span>
                 <span
                   title={`Kode Meja: #${displayRoomCode}`}
-                  className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#FFE600] text-black font-mono font-black border-2 border-black shadow-[1px_1px_0px_#000000] leading-none"
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-[#FFE600] text-black font-mono font-black border-2 border-black shadow-[1px_1px_0px_#000000] leading-none"
                 >
                   #{displayRoomCode}
                 </span>
@@ -286,19 +321,16 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
             </div>
           </div>
 
-          {/* Sisi Tengah: Pill Kuning Status As */}
+          {/* Sisi Kanan: Pill Kuning Status As */}
           <div
             title={`Status As: ${aceStatusText}`}
-            className="inline-flex items-center bg-[#FFE600] rounded-full px-2.5 py-1 text-[10px] font-black border-2 border-black text-black shadow-[1.5px_1.5px_0px_#000000] whitespace-nowrap"
+            className="inline-flex items-center bg-[#FFE600] rounded-full px-2.5 py-1 text-[10px] font-black border-2 border-black text-black shadow-[1.5px_1.5px_0px_#000000] whitespace-nowrap shrink-0"
           >
             <span className="font-display">Status As:&nbsp;</span>
             <span className="text-black underline font-black font-display">
               {aceStatusText}
             </span>
           </div>
-
-          {/* Sisi Kanan: Spacer Penyeimbang */}
-          <div className="w-8" aria-hidden="true" />
         </header>
 
         {/* =========================================================================
@@ -342,6 +374,7 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
               board={currentBoard}
               selectedCard={selectedCard}
               isMyTurn={isMyTurn}
+              aceMode={roomState?.aceMode ?? 'LOCKED_NONE'}
               onPlaySelectedCard={handlePlayCard}
             />
           </section>
@@ -422,6 +455,7 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
         playerName={me.name || playerName || 'Pemain'}
         playerInitials={me.initials || getInitials(me.name || playerName || 'P1')}
         isOnline={roomState?.mode === 'online'}
+        isHost={Boolean(me.isHost)}
         pingMs={pingMs}
         onClose={() => setDrawerOpen(false)}
         onOpenRules={() => {
