@@ -8,38 +8,99 @@ import (
 	"github.com/user/sevens/pkg/engine"
 )
 
+type tacticalBotProfile struct {
+	ID       string
+	Name     string
+	Initials string
+}
+
+var tacticalBotRoster = []tacticalBotProfile{
+	{ID: "bot-1", Name: "Agresif9", Initials: "A9"},
+	{ID: "bot-2", Name: "Cermat8", Initials: "C8"},
+	{ID: "bot-3", Name: "Taktik7", Initials: "T7"},
+	{ID: "bot-4", Name: "Pilar06", Initials: "P6"},
+}
+
+func nextTacticalBotProfile(existing []*Player) tacticalBotProfile {
+	usedIDs := make(map[string]bool, len(existing))
+	usedNames := make(map[string]bool, len(existing))
+	for _, p := range existing {
+		usedIDs[p.ID] = true
+		usedNames[p.Name] = true
+	}
+	for _, profile := range tacticalBotRoster {
+		if !usedIDs[profile.ID] && !usedNames[profile.Name] {
+			return profile
+		}
+	}
+	return tacticalBotRoster[len(existing)%len(tacticalBotRoster)]
+}
+
+// NewTacticalHardBot constructs a Hard AI Bot player using the next available tactical profile.
+func (r *Room) NewTacticalHardBot(seatIdx int) *Player {
+	profile := nextTacticalBotProfile(r.Players)
+	return &Player{
+		ID:                profile.ID,
+		Name:              profile.Name,
+		Initials:          profile.Initials,
+		AvatarColor:       GetAvatarColor(seatIdx),
+		IsBot:             true,
+		BotLevel:          engine.DifficultyHard,
+		IsHost:            false,
+		IsReady:           true,
+		IsConnected:       true,
+		Hand:              make([]engine.Card, 0),
+		FoldedCards:       make([]engine.Card, 0),
+		PenaltyPoints:     0,
+		LossesCount:       0,
+		ConsecutiveLosses: 0,
+		StatusRTRW:        engine.StatusNone,
+	}
+}
+
 // FillEmptySeatsWithHardBots fills all remaining empty seats up to 4 total players
-// with AI Bots strictly locked to engine.DifficultyHard.
+// with tactical AI Bots strictly locked to engine.DifficultyHard.
 func (r *Room) FillEmptySeatsWithHardBots() {
-	botIDs := []string{"bot-1", "bot-2", "bot-3", "bot-4"}
 	for len(r.Players) < MaxPlayers {
 		seatIdx := len(r.Players)
-		botID := botIDs[seatIdx]
-		botName := "Bot (Hard)"
-		bot := &Player{
-			ID:            botID,
-			Name:          botName,
-			Initials:      "BH",
-			AvatarColor:   GetAvatarColor(seatIdx),
-			IsBot:         true,
-			BotLevel:      engine.DifficultyHard,
-			IsHost:        false,
-			IsReady:       true,
-			IsConnected:   true,
-			Hand:              make([]engine.Card, 0),
-			FoldedCards:       make([]engine.Card, 0),
-			PenaltyPoints:     0,
-			LossesCount:       0,
-			ConsecutiveLosses: 0,
-			StatusRTRW:        engine.StatusNone,
-		}
-		r.Players = append(r.Players, bot)
+		r.Players = append(r.Players, r.NewTacticalHardBot(seatIdx))
 	}
+}
+
+// GetJuruKunciPlayer returns the 4th-place (Juru Kunci) player from r.Scores
+// so the server can assign them to the shuffle ritual on rematch.
+func (r *Room) GetJuruKunciPlayer() *Player {
+	if len(r.Scores) == 0 {
+		return nil
+	}
+
+	var targetID string
+	highestRank := 0
+	for playerID, detail := range r.Scores {
+		if detail.IsJuruKunci || detail.RankPosition == MaxPlayers {
+			targetID = playerID
+			break
+		}
+		if detail.RankPosition > highestRank {
+			highestRank = detail.RankPosition
+			targetID = playerID
+		}
+	}
+	if targetID == "" {
+		return nil
+	}
+	for _, p := range r.Players {
+		if p.ID == targetID {
+			return p
+		}
+	}
+	return nil
 }
 
 // StartMatch initializes or restarts match progression for the room.
 // For initial games (isRematch == false), it validates that the room is in StatusWaiting
 // and that at least 2 human players are marked ready.
+// For rematches (isRematch == true), it accepts StatusWaiting, StatusFinished, or StatusShuffling.
 // It fills empty seats with Hard Bots, deals cards with auto-reshuffle, extracts the
 // opener 7 onto the board, and sets the active turn to the player after the opener.
 func (r *Room) StartMatch(isRematch bool, rng *rand.Rand) error {
@@ -57,6 +118,8 @@ func (r *Room) StartMatch(isRematch bool, rng *rand.Rand) error {
 		if readyHumans < MinHumanPlayersToStart {
 			return errors.New("at least 2 human players must be ready to start")
 		}
+	} else if r.Status != StatusWaiting && r.Status != StatusFinished && r.Status != StatusShuffling {
+		return errors.New("room is not ready for rematch")
 	}
 
 	if rng == nil {
@@ -98,6 +161,7 @@ func (r *Room) StartMatch(isRematch bool, rng *rand.Rand) error {
 		r.RTRWStatus = engine.StatusNone
 	}
 	r.Scores = nil
+	r.ShufflerID = ""
 	r.LastFoldTurn = make(map[string]int)
 	r.CurrentTurn = r.Players[(openerIdx+1)%len(r.Players)].ID
 	r.LastActivity = time.Now()
