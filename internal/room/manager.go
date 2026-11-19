@@ -48,8 +48,10 @@ type Room struct {
 	Scores       map[string]engine.PlayerScoreDetail `json:"scores,omitempty"`
 	RTRWHolderID string                              `json:"rtRwHolderId"`
 	RTRWStatus   engine.CommunityStatus              `json:"rtRwStatus"`
+	ShufflerID   string                              `json:"shufflerId,omitempty"`
 	LastActivity time.Time                           `json:"lastActivity"`
 	LastFoldTurn map[string]int                      `json:"-"`
+	ShuffleTimer *time.Timer                         `json:"-"`
 	Mu           sync.RWMutex                        `json:"-"`
 }
 
@@ -98,11 +100,29 @@ func (m *Manager) GetOrCreateRoom(roomID string) *Room {
 	return newRoom
 }
 
-// DeleteRoom removes a room from memory.
+// DeleteRoom removes a room from memory and stops any active timers.
 func (m *Manager) DeleteRoom(roomID string) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.rooms, roomID)
+	r, exists := m.rooms[roomID]
+	if exists {
+		delete(m.rooms, roomID)
+	}
+	m.mu.Unlock()
+
+	if exists && r != nil {
+		r.Mu.Lock()
+		if r.ShuffleTimer != nil {
+			r.ShuffleTimer.Stop()
+			r.ShuffleTimer = nil
+		}
+		for _, p := range r.Players {
+			if p.ReconnectTimer != nil {
+				p.ReconnectTimer.Stop()
+				p.ReconnectTimer = nil
+			}
+		}
+		r.Mu.Unlock()
+	}
 }
 
 // StartReaper runs a background garbage collector for stale or empty rooms.
@@ -148,6 +168,18 @@ func (m *Manager) reapStaleRooms(maxIdle time.Duration) {
 
 		if isIdle || (!hasConnectedHuman && !hasAwaitingReconnect) {
 			log.Printf("[Room Reaper] Evicting room: %s (idle since %s)", id, lastActivity.Format(time.RFC3339))
+			r.Mu.Lock()
+			if r.ShuffleTimer != nil {
+				r.ShuffleTimer.Stop()
+				r.ShuffleTimer = nil
+			}
+			for _, p := range r.Players {
+				if p.ReconnectTimer != nil {
+					p.ReconnectTimer.Stop()
+					p.ReconnectTimer = nil
+				}
+			}
+			r.Mu.Unlock()
 			delete(m.rooms, id)
 		}
 	}
