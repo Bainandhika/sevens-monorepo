@@ -50,7 +50,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     >
       {/* Modal Container */}
       <div
-        className="relative z-10 w-full max-w-[390px] bg-[#FAF8FF] border-[2.5px] border-black rounded-2xl shadow-[6px_6px_0px_#000000] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
+        className="relative z-10 w-full max-w-[390px] bg-[#FAF8FF] border-[3px] border-black rounded-2xl shadow-[6px_6px_0px_#000000] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -218,11 +218,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </p>
           </div>
 
+          {/* Build Version Box */}
+          <div className="bg-white border-2 border-black rounded-xl px-3.5 py-2 shadow-[2px_2px_0px_#000000] flex items-center justify-between">
+            <span className="font-display font-bold text-xs text-neutral-600 uppercase tracking-wider">
+              Versi 1.0 MVP
+            </span>
+            <span className="font-mono font-black text-[11px] bg-[#FFE600] text-black px-2 py-0.5 rounded border border-black shadow-[1px_1px_0px_#000000]">
+              Build: v1.0 MVP
+            </span>
+          </div>
+
           {/* Save / Close Action Button */}
           <button
             type="button"
             onClick={onClose}
-            className="w-full bg-[#10B981] hover:bg-[#0ea372] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#000000] text-black font-display font-black text-sm uppercase py-3.5 px-4 rounded-xl border-[2.5px] border-black shadow-[4px_4px_0px_#000000] flex items-center justify-center gap-2 mt-1 cursor-pointer transition-all select-none"
+            className="w-full bg-[#00D084] hover:bg-[#00c57c] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] text-black font-display font-black text-sm uppercase py-3.5 px-4 rounded-xl border-[2.5px] border-black shadow-[4px_4px_0px_#000000] flex items-center justify-center gap-2 cursor-pointer transition-all select-none"
           >
             <span>SIMPAN & TUTUP</span>
             <svg
