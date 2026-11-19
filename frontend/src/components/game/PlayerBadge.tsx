@@ -26,14 +26,22 @@ function getPlayerInitials(player: Player): string {
   return cleanName.slice(0, 2).toUpperCase();
 }
 
+const DARK_AVATAR_COLORS = new Set([
+  '#4F46E5',
+  '#A855F7',
+  '#3B82F6',
+  '#8B0000',
+  '#283044',
+]);
+
 /**
  * Player Telemetry Seat Pod Component
  * Spec & Tactical Privacy (PRD Bab 6 Layar 3):
  * - DILARANG menampilkan jumlah sisa kartu tangan maupun isi kartu tutup milik lawan!
  * - Lawan hanya menampilkan:
- *   1. Avatar bulat (w-8 h-8 rounded-full border-2 border-black font-black text-xs dengan 2 karakter inisial nama)
+ *   1. Avatar bulat (w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-black font-display font-black dengan 2 karakter inisial nama)
  *   2. Titik status koneksi (bg-[#00D084] jika online, bg-slate-400 jika bot/offline)
- *   3. Nama pemain (text-[11px] font-black text-black) + Dark BOT tag jika bot
+ *   3. Nama pemain (text-[11px] font-black text-black) + Dark BOT tag (#283044) jika bot
  *   4. Badge giliran aktif (pinging dot kuning)
  *   5. Badge rekor kumulatif 'Kalah: Nx' & Badge Eksklusif RT/RW (#8B0000)
  */
@@ -48,13 +56,15 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
   const isOnline = Boolean(player.isConnected && !player.isBot);
   const lossesCount = player.lossesCount ?? 0;
   const isRightAligned = align === 'right';
+  const avatarBg = player.avatarColor || '#FFE600';
+  const isDarkAvatar = DARK_AVATAR_COLORS.has(avatarBg.toUpperCase());
 
   return (
     <div
       role="group"
       aria-label={`Pemain ${player.name}${isCurrentTurn ? ' (Giliran aktif)' : ''}`}
       className={clsx(
-        'relative inline-flex items-center gap-2 px-2 py-1.5 rounded-xl border-2 border-black select-none transition-all duration-200 shadow-[2px_2px_0px_#000000]',
+        'relative inline-flex items-center gap-2 px-2 py-1.5 rounded-2xl border-2 border-black select-none transition-all duration-200 shadow-[3px_3px_0px_#000000]',
         isCurrentTurn ? 'bg-[#FFFDE6] ring-2 ring-[#FFE600]' : 'bg-white',
         isRightAligned ? 'flex-row-reverse text-right' : 'flex-row text-left',
         className
@@ -63,8 +73,11 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
       {/* Avatar Bulat dengan Titik Status Koneksi */}
       <div className="relative shrink-0">
         <div
-          className="w-8 h-8 rounded-full border-2 border-black font-black text-xs flex items-center justify-center text-black shadow-[1px_1px_0px_#000000]"
-          style={{ backgroundColor: player.avatarColor || '#FFE600' }}
+          className={clsx(
+            'w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-black font-display font-black text-xs sm:text-sm flex items-center justify-center shadow-[1px_1px_0px_#000000]',
+            isDarkAvatar ? 'text-white' : 'text-black'
+          )}
+          style={{ backgroundColor: avatarBg }}
           aria-hidden="true"
         >
           {initials}
@@ -109,7 +122,7 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
 
           {/* Dark BOT tag for bot players */}
           {player.isBot && (
-            <span className="bg-[#121212] text-white text-[7px] px-1 py-0.5 rounded font-display font-bold uppercase shrink-0">
+            <span className="bg-[#283044] text-white text-[8px] px-1.5 py-0.5 rounded font-display font-bold uppercase shrink-0 leading-none">
               BOT
             </span>
           )}
@@ -136,7 +149,7 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
         >
           <span
             className={clsx(
-              'px-1.5 py-0.5 rounded-lg border-2 border-black font-black text-[10px] leading-none inline-flex items-center justify-center select-none shadow-[1px_1px_0px_#000000]',
+              'px-1.5 py-0.5 rounded-lg border-2 border-black font-black text-[10px] leading-none inline-flex items-center justify-center whitespace-nowrap select-none shadow-[1px_1px_0px_#000000]',
               lossesCount > 0
                 ? 'bg-[#FF4343] text-white'
                 : 'bg-[#F5F0EA] text-black'
@@ -148,7 +161,7 @@ export const PlayerBadge: React.FC<PlayerBadgeProps> = ({
 
           {(player.statusRtRw === 'RT' || player.statusRtRw === 'RW') && (
             <span
-              className="bg-[#8b0000] text-white border-[1.5px] border-black rounded px-1 py-0.5 text-[8px] font-display font-black uppercase leading-none shadow-[1px_1px_0px_#000000]"
+              className="bg-[#8B0000] text-white border-[1.5px] border-black rounded px-1 py-0.5 text-[8px] font-display font-black uppercase leading-none shadow-[1px_1px_0px_#000000]"
               title={
                 player.statusRtRw === 'RW'
                   ? 'RW: 6x Kalah Beruntun'
