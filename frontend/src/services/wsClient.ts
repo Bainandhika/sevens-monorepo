@@ -2,8 +2,11 @@ import {
   AceMode,
   Card,
   CommunityStatus,
+  LoungeReactionPayload,
   Player,
   RoomState,
+  RoomStatus,
+  ShuffleProgressPayload,
   Suit,
 } from '../types/game';
 import { getWsBaseUrl, pingHealthCheck } from './apiClient';
@@ -22,6 +25,8 @@ export type WSOutgoingEventType =
   | 'fold_card'
   | 'rematch'
   | 'leave_room'
+  | 'shuffle_progress'
+  | 'lounge_reaction'
   | 'ping';
 
 /**
@@ -33,6 +38,8 @@ export interface WSClientCallbacks {
   onRoomStateUpdate: (roomState: RoomState) => void;
   onLatencyUpdate: (pingMs: number) => void;
   onError: (message: string) => void;
+  onShuffleProgress?: (payload: ShuffleProgressPayload) => void;
+  onLoungeReaction?: (payload: LoungeReactionPayload) => void;
 }
 
 /**
@@ -50,6 +57,8 @@ export interface WSClientService {
   sendPlayCard: (roomId: string, playerId: string, card: Card) => void;
   sendFoldCard: (roomId: string, playerId: string, card: Card) => void;
   sendRematch: (roomId: string, playerId: string) => void;
+  sendShuffleProgress: (roomId: string, step: 1 | 2 | 3, autoReshuffle?: boolean) => void;
+  sendLoungeReaction: (roomId: string, reaction: 'sruput' | 'cheer', senderId: string) => void;
   disconnect: () => void;
 }
 
@@ -151,7 +160,7 @@ export function normalizeRoomState(raw: any, fallbackRoomId: string): RoomState 
   return {
     id: String(raw?.id || fallbackRoomId),
     mode: 'online',
-    status: (raw?.status as 'waiting' | 'playing' | 'finished') || 'waiting',
+    status: (raw?.status as RoomStatus) || 'waiting',
     roundNumber: Number(raw?.roundNumber || 1),
     turnNumber: Number(raw?.turnNumber || 1),
     currentTurn: String(raw?.currentTurn || (players[0]?.id || '')),
@@ -164,6 +173,7 @@ export function normalizeRoomState(raw: any, fallbackRoomId: string): RoomState 
     scores: raw?.scores,
     rtRwHolderId: String(raw?.rtRwHolderId || ''),
     rtRwStatus: (raw?.rtRwStatus as CommunityStatus) || 'NONE',
+    shufflerId: raw?.shufflerId ? String(raw.shufflerId) : undefined,
   };
 }
 
@@ -367,6 +377,29 @@ export function createWsClient(initialCallbacks?: Partial<WSClientCallbacks>): W
           const normalized = normalizeRoomState(payload, roomId);
           useGameStore.getState().syncServerRoomState(normalized);
           callbacks.onRoomStateUpdate(normalized);
+        } else if (msgType === 'shuffle_progress' && payload) {
+          const rawStep = Number(payload.step);
+          const step: 1 | 2 | 3 = rawStep >= 3 ? 3 : rawStep === 2 ? 2 : 1;
+          const progressPayload: ShuffleProgressPayload = {
+            step,
+            totalSteps: 3,
+            shufflerId: payload.shufflerId ? String(payload.shufflerId) : undefined,
+            autoReshuffle: Boolean(payload.autoReshuffle),
+          };
+          useGameStore
+            .getState()
+            .setShuffleStep(progressPayload.step, progressPayload.autoReshuffle);
+          callbacks.onShuffleProgress?.(progressPayload);
+        } else if (msgType === 'lounge_reaction' && payload) {
+          if (payload.reaction === 'sruput' || payload.reaction === 'cheer') {
+            const reactionPayload: LoungeReactionPayload = {
+              reaction: payload.reaction,
+              senderId: String(payload.senderId || ''),
+              senderName: payload.senderName ? String(payload.senderName) : undefined,
+            };
+            useGameStore.getState().triggerLoungeReaction(reactionPayload);
+            callbacks.onLoungeReaction?.(reactionPayload);
+          }
         } else if (msgType === 'pong') {
           lastPongTimestamp = Date.now();
           const latency = Math.max(1, Math.round(lastPongTimestamp - (payload?.timestamp || lastPingTimestamp)));
@@ -483,14 +516,24 @@ export function createWsClient(initialCallbacks?: Partial<WSClientCallbacks>): W
     },
 
     sendFoldCard(roomId: string, playerId: string, card: Card) {
-      // Send fold_card event containing card detail
       sendEvent('fold_card', { roomId, playerId, card });
-      // Also send pass payload for full Go handlePass backend compatibility
-      sendEvent('pass', { roomId, playerId });
     },
 
     sendRematch(roomId: string, playerId: string) {
       sendEvent('rematch', { roomId, playerId });
+    },
+
+    sendShuffleProgress(roomId: string, step: 1 | 2 | 3, autoReshuffle = false) {
+      sendEvent('shuffle_progress', {
+        roomId,
+        step,
+        totalSteps: 3,
+        autoReshuffle: Boolean(autoReshuffle),
+      });
+    },
+
+    sendLoungeReaction(roomId: string, reaction: 'sruput' | 'cheer', senderId: string) {
+      sendEvent('lounge_reaction', { roomId, reaction, senderId });
     },
 
     disconnect() {
