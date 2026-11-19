@@ -13,17 +13,21 @@ import (
 )
 
 type SocketHandler struct {
-	m       *melody.Melody
-	manager *Manager
-	botEng  *engine.BotEngine
-	mu      sync.Mutex
+	m                   *melody.Melody
+	manager             *Manager
+	botEng              *engine.BotEngine
+	shuffleTimeout      time.Duration
+	botShuffleStepDelay time.Duration
+	mu                  sync.Mutex
 }
 
 func NewSocketHandler(m *melody.Melody, manager *Manager) *SocketHandler {
 	handler := &SocketHandler{
-		m:       m,
-		manager: manager,
-		botEng:  engine.NewBotEngine(),
+		m:                   m,
+		manager:             manager,
+		botEng:              engine.NewBotEngine(),
+		shuffleTimeout:      ShuffleTimeout,
+		botShuffleStepDelay: 1500 * time.Millisecond,
 	}
 	handler.setupMelodyRoutes()
 	return handler
@@ -68,6 +72,10 @@ func (h *SocketHandler) setupMelodyRoutes() {
 			h.handleLeaveRoom(s, wsMsg.Payload)
 		case EventAddBot:
 			h.handleAddBot(s, wsMsg.Payload)
+		case EventShuffleProgress:
+			h.handleShuffleProgress(s, wsMsg.Payload)
+		case EventLoungeReaction:
+			h.handleLoungeReaction(s, wsMsg.Payload)
 		case EventPing:
 			h.handlePing(s, wsMsg.Payload)
 		default:
@@ -152,20 +160,22 @@ func (h *SocketHandler) handleJoin(s *melody.Session, raw json.RawMessage) {
 	}
 
 	newPlayer := &Player{
-		ID:            playerID,
-		Name:          sanitizedName,
-		Initials:      GenerateInitials(sanitizedName),
-		AvatarColor:   GetAvatarColor(seatIdx),
-		IsBot:         false,
-		IsHost:        isHost,
-		IsReady:       isReady,
-		Hand:          make([]engine.Card, 0),
-		FoldedCards:   make([]engine.Card, 0),
-		PenaltyPoints: 0,
-		LossesCount:   0,
-		IsConnected:   true,
-		Session:       s,
-		SessionToken:  sessionToken,
+		ID:                playerID,
+		Name:              sanitizedName,
+		Initials:          GenerateInitials(sanitizedName),
+		AvatarColor:       GetAvatarColor(seatIdx),
+		IsBot:             false,
+		IsHost:            isHost,
+		IsReady:           isReady,
+		Hand:              make([]engine.Card, 0),
+		FoldedCards:       make([]engine.Card, 0),
+		PenaltyPoints:     0,
+		LossesCount:       0,
+		ConsecutiveLosses: 0,
+		StatusRTRW:        engine.StatusNone,
+		IsConnected:       true,
+		Session:           s,
+		SessionToken:      sessionToken,
 	}
 
 	room.Players = append(room.Players, newPlayer)
@@ -253,19 +263,16 @@ func (h *SocketHandler) handleStartGame(s *melody.Session, raw json.RawMessage) 
 
 	room.Mu.Lock()
 	isHost := false
-	readyHumans := 0
 	for _, p := range room.Players {
 		if p.ID == playerID && p.IsHost {
 			isHost = true
-		}
-		if !p.IsBot && p.IsReady {
-			readyHumans++
+			break
 		}
 	}
 
-	if !isHost && readyHumans < MinHumanPlayersToStart {
+	if !isHost {
 		room.Mu.Unlock()
-		h.sendError(s, "only host or at least 2 ready human players can start the game")
+		h.sendError(s, "hanya host yang dapat memulai permainan")
 		return
 	}
 
@@ -412,17 +419,239 @@ func (h *SocketHandler) handleRematch(s *melody.Session, raw json.RawMessage) {
 		return
 	}
 
-	room, exists := h.manager.GetRoom(payload.RoomID)
+	roomID := payload.RoomID
+	if roomID == "" {
+		if val, ok := s.Get("roomId"); ok {
+			roomID, _ = val.(string)
+		}
+	}
+
+	room, exists := h.manager.GetRoom(roomID)
 	if !exists {
 		h.sendError(s, "room not found")
 		return
 	}
 
 	room.Mu.Lock()
+	if room.Status == StatusShuffling {
+		room.Mu.Unlock()
+		return
+	}
+	if room.Status != StatusFinished {
+		room.Mu.Unlock()
+		h.sendError(s, "ronde belum selesai")
+		return
+	}
+
+	juruKunci := room.GetJuruKunciPlayer()
+	if juruKunci == nil && len(room.Players) > 0 {
+		juruKunci = room.Players[len(room.Players)-1]
+	}
+	if juruKunci == nil {
+		room.Mu.Unlock()
+		h.sendError(s, "tidak ada pemain untuk mengocok kartu")
+		return
+	}
+
+	if room.ShuffleTimer != nil {
+		room.ShuffleTimer.Stop()
+		room.ShuffleTimer = nil
+	}
+
+	room.Status = StatusShuffling
+	room.ShufflerID = juruKunci.ID
+	room.LastActivity = time.Now()
+	shufflerID := juruKunci.ID
+	shufflerIsBot := juruKunci.IsBot
+	expectedRound := room.RoundNumber
+
+	timeout := h.shuffleTimeout
+	if timeout <= 0 {
+		timeout = ShuffleTimeout
+	}
+	room.ShuffleTimer = time.AfterFunc(timeout, func() {
+		h.triggerShuffleAutoReshuffle(room, expectedRound)
+	})
+	room.Mu.Unlock()
+
+	h.broadcastRoomState(room)
+
+	if shufflerIsBot {
+		h.runBotShuffleRitual(room, shufflerID, expectedRound)
+	}
+}
+
+func (h *SocketHandler) handleShuffleProgress(s *melody.Session, raw json.RawMessage) {
+	var payload ShuffleProgressPayload
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		h.sendError(s, "invalid shuffle_progress payload")
+		return
+	}
+
+	roomID := payload.RoomID
+	if roomID == "" {
+		if val, ok := s.Get("roomId"); ok {
+			roomID, _ = val.(string)
+		}
+	}
+
+	room, exists := h.manager.GetRoom(roomID)
+	if !exists {
+		h.sendError(s, "room not found")
+		return
+	}
+
+	if payload.TotalSteps == 0 {
+		payload.TotalSteps = 3
+	}
+	if payload.Step < 1 || payload.Step > 3 || payload.TotalSteps != 3 {
+		h.sendError(s, "invalid shuffle_progress payload")
+		return
+	}
+
+	room.Mu.Lock()
+	if room.Status != StatusShuffling {
+		room.Mu.Unlock()
+		return
+	}
+	payload.RoomID = room.ID
+	if payload.ShufflerID == "" {
+		payload.ShufflerID = room.ShufflerID
+	}
+	room.LastActivity = time.Now()
+
+	shouldComplete := payload.Step >= 3 || payload.AutoReshuffle
+	if shouldComplete && room.ShuffleTimer != nil {
+		room.ShuffleTimer.Stop()
+		room.ShuffleTimer = nil
+	}
+	room.Mu.Unlock()
+
+	h.broadcastToRoom(room.ID, EventShuffleProgress, payload)
+
+	if shouldComplete {
+		h.completeShuffleAndStartRound(room)
+	}
+}
+
+func (h *SocketHandler) handleLoungeReaction(s *melody.Session, raw json.RawMessage) {
+	var payload LoungeReactionPayload
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		h.sendError(s, "invalid lounge_reaction payload")
+		return
+	}
+
+	if payload.Reaction != "sruput" && payload.Reaction != "cheer" {
+		h.sendError(s, "invalid lounge reaction")
+		return
+	}
+
+	roomID := payload.RoomID
+	if roomID == "" {
+		if val, ok := s.Get("roomId"); ok {
+			roomID, _ = val.(string)
+		}
+	}
+
+	room, exists := h.manager.GetRoom(roomID)
+	if !exists {
+		h.sendError(s, "room not found")
+		return
+	}
+
+	senderID := payload.SenderID
+	if senderID == "" {
+		if val, ok := s.Get("playerId"); ok {
+			senderID, _ = val.(string)
+		}
+	}
+
+	room.Mu.RLock()
+	senderName := payload.SenderName
+	for _, p := range room.Players {
+		if p.ID == senderID {
+			senderName = p.Name
+			break
+		}
+	}
+	resolvedRoomID := room.ID
+	room.Mu.RUnlock()
+
+	payload.RoomID = resolvedRoomID
+	payload.SenderID = senderID
+	payload.SenderName = senderName
+
+	h.broadcastToRoom(resolvedRoomID, EventLoungeReaction, payload)
+}
+
+func (h *SocketHandler) triggerShuffleAutoReshuffle(room *Room, expectedRound int) {
+	room.Mu.Lock()
+	if room.Status != StatusShuffling || room.RoundNumber != expectedRound {
+		room.Mu.Unlock()
+		return
+	}
+	room.ShuffleTimer = nil
+	shufflerID := room.ShufflerID
+	room.Mu.Unlock()
+
+	h.broadcastToRoom(room.ID, EventShuffleProgress, ShuffleProgressPayload{
+		RoomID:        room.ID,
+		Step:          3,
+		TotalSteps:    3,
+		ShufflerID:    shufflerID,
+		AutoReshuffle: true,
+	})
+	h.completeShuffleAndStartRound(room)
+}
+
+func (h *SocketHandler) runBotShuffleRitual(room *Room, shufflerID string, expectedRound int) {
+	stepDelay := h.botShuffleStepDelay
+	if stepDelay <= 0 {
+		stepDelay = 1500 * time.Millisecond
+	}
+
+	go func() {
+		for step := 1; step <= 3; step++ {
+			time.Sleep(stepDelay)
+
+			if _, exists := h.manager.GetRoom(room.ID); !exists {
+				return
+			}
+
+			room.Mu.RLock()
+			stillActive := room.Status == StatusShuffling && room.RoundNumber == expectedRound
+			room.Mu.RUnlock()
+			if !stillActive {
+				return
+			}
+
+			h.broadcastToRoom(room.ID, EventShuffleProgress, ShuffleProgressPayload{
+				RoomID:     room.ID,
+				Step:       step,
+				TotalSteps: 3,
+				ShufflerID: shufflerID,
+			})
+		}
+
+		h.completeShuffleAndStartRound(room)
+	}()
+}
+
+func (h *SocketHandler) completeShuffleAndStartRound(room *Room) {
+	room.Mu.Lock()
+	if room.Status != StatusShuffling {
+		room.Mu.Unlock()
+		return
+	}
+	if room.ShuffleTimer != nil {
+		room.ShuffleTimer.Stop()
+		room.ShuffleTimer = nil
+	}
+	room.ShufflerID = ""
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	if err := room.StartMatch(true, rng); err != nil {
 		room.Mu.Unlock()
-		h.sendError(s, err.Error())
+		log.Printf("[Shuffle] StartMatch error in room %s: %v", room.ID, err)
 		return
 	}
 	room.Mu.Unlock()
@@ -465,7 +694,9 @@ func (h *SocketHandler) handleLeaveRoom(s *melody.Session, raw json.RawMessage) 
 		}
 	}
 
-	if room.Status == StatusPlaying {
+	if room.Status == StatusPlaying || room.Status == StatusShuffling {
+		wasShuffling := room.Status == StatusShuffling
+		isShuffler := wasShuffling && room.ShufflerID == playerID
 		for _, p := range room.Players {
 			if p.ID == playerID {
 				p.IsBot = true
@@ -477,15 +708,33 @@ func (h *SocketHandler) handleLeaveRoom(s *melody.Session, raw json.RawMessage) 
 				break
 			}
 		}
+		if isShuffler && room.ShuffleTimer != nil {
+			room.ShuffleTimer.Stop()
+			room.ShuffleTimer = nil
+		}
 		room.LastActivity = time.Now()
 		room.Mu.Unlock()
 		room.MigrateHost()
 
 		if !room.HasActiveHumans() {
 			h.manager.DeleteRoom(room.ID)
+			return
+		}
+
+		if isShuffler {
+			h.broadcastToRoom(room.ID, EventShuffleProgress, ShuffleProgressPayload{
+				RoomID:        room.ID,
+				Step:          3,
+				TotalSteps:    3,
+				ShufflerID:    playerID,
+				AutoReshuffle: true,
+			})
+			h.completeShuffleAndStartRound(room)
 		} else {
 			h.broadcastRoomState(room)
-			h.scheduleBotTurnIfNeeded(room)
+			if room.Status == StatusPlaying {
+				h.scheduleBotTurnIfNeeded(room)
+			}
 		}
 		return
 	}
@@ -533,30 +782,8 @@ func (h *SocketHandler) handleAddBot(s *melody.Session, raw json.RawMessage) {
 		return
 	}
 
-	diff := payload.Difficulty
-	if diff == "" {
-		diff = engine.DifficultyHard
-	}
-
 	seatIdx := len(room.Players)
-	botIDs := []string{"bot-1", "bot-2", "bot-3", "bot-4"}
-	botID := botIDs[seatIdx]
-	botName := "Bot (" + string(diff) + ")"
-	botPlayer := &Player{
-		ID:            botID,
-		Name:          botName,
-		Initials:      GenerateInitials(botName),
-		AvatarColor:   GetAvatarColor(seatIdx),
-		IsBot:         true,
-		BotLevel:      diff,
-		IsHost:        false,
-		IsReady:       true,
-		IsConnected:   true,
-		Hand:          make([]engine.Card, 0),
-		FoldedCards:   make([]engine.Card, 0),
-		PenaltyPoints: 0,
-		LossesCount:   0,
-	}
+	botPlayer := room.NewTacticalHardBot(seatIdx)
 
 	room.Players = append(room.Players, botPlayer)
 	room.LastActivity = time.Now()
@@ -653,21 +880,42 @@ func (h *SocketHandler) handleDisconnect(s *melody.Session) {
 
 		p.ReconnectTimer = nil
 
-		if room.Status == StatusPlaying {
+		if room.Status == StatusPlaying || room.Status == StatusShuffling {
+			wasShuffling := room.Status == StatusShuffling
+			isShuffler := wasShuffling && room.ShufflerID == p.ID
 			p.IsBot = true
 			p.BotLevel = engine.DifficultyHard
 			p.Name = "Bot (Hard)"
 			p.Initials = "BH"
 			p.IsConnected = true
-			isCurrentTurn := room.CurrentTurn == p.ID
+			isCurrentTurn := room.Status == StatusPlaying && room.CurrentTurn == p.ID
+			if isShuffler && room.ShuffleTimer != nil {
+				room.ShuffleTimer.Stop()
+				room.ShuffleTimer = nil
+			}
 			room.LastActivity = time.Now()
 			room.Mu.Unlock()
 
 			room.MigrateHost()
-			h.broadcastRoomState(room)
+			if !room.HasActiveHumans() {
+				h.manager.DeleteRoom(room.ID)
+				return
+			}
 
-			if isCurrentTurn {
-				h.scheduleBotTurnIfNeeded(room)
+			if isShuffler {
+				h.broadcastToRoom(room.ID, EventShuffleProgress, ShuffleProgressPayload{
+					RoomID:        room.ID,
+					Step:          3,
+					TotalSteps:    3,
+					ShufflerID:    p.ID,
+					AutoReshuffle: true,
+				})
+				h.completeShuffleAndStartRound(room)
+			} else {
+				h.broadcastRoomState(room)
+				if isCurrentTurn {
+					h.scheduleBotTurnIfNeeded(room)
+				}
 			}
 			return
 		}
@@ -773,6 +1021,23 @@ func (h *SocketHandler) scheduleBotTurnIfNeeded(room *Room) {
 	}()
 }
 
+func (h *SocketHandler) broadcastToRoom(roomID string, eventType string, payload any) {
+	resp := WSResponse{
+		Type:    eventType,
+		Payload: payload,
+	}
+	bytes, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("[WebSocket] Error marshaling %s: %v", eventType, err)
+		return
+	}
+
+	_ = h.m.BroadcastFilter(bytes, func(q *melody.Session) bool {
+		val, exists := q.Get("roomId")
+		return exists && val == roomID
+	})
+}
+
 func (h *SocketHandler) broadcastRoomState(room *Room) {
 	room.Mu.RLock()
 	resp := WSResponse{
@@ -780,6 +1045,7 @@ func (h *SocketHandler) broadcastRoomState(room *Room) {
 		Payload: room,
 	}
 	stateBytes, err := json.Marshal(resp)
+	roomID := room.ID
 	room.Mu.RUnlock()
 
 	if err != nil {
@@ -789,7 +1055,7 @@ func (h *SocketHandler) broadcastRoomState(room *Room) {
 
 	_ = h.m.BroadcastFilter(stateBytes, func(q *melody.Session) bool {
 		val, exists := q.Get("roomId")
-		return exists && val == room.ID
+		return exists && val == roomID
 	})
 }
 
