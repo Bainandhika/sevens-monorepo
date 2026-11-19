@@ -47,7 +47,9 @@ export const App: React.FC<AppRootProps> = () => {
   const toast = useGameStore((state) => state.toast);
   const showToast = useGameStore((state) => state.showToast);
   const startOfflineGame = useGameStore((state) => state.startOfflineGame);
-  const startRematch = useGameStore((state) => state.startRematch);
+  const triggerRematch = useGameStore((state) => state.triggerRematch);
+  const setShuffleStep = useGameStore((state) => state.setShuffleStep);
+  const triggerLoungeReaction = useGameStore((state) => state.triggerLoungeReaction);
   const leaveToLobby = useGameStore((state) => state.leaveToLobby);
   const playSelectedCard = useGameStore((state) => state.playSelectedCard);
   const attemptFoldCard = useGameStore((state) => state.attemptFoldCard);
@@ -98,9 +100,17 @@ export const App: React.FC<AppRootProps> = () => {
           setScreen('waiting_room');
         } else if (updatedRoom.status === 'playing' && current !== 'gameplay') {
           setScreen('gameplay');
+        } else if (updatedRoom.status === 'shuffling' && current !== 'shuffling') {
+          setScreen('shuffling');
         } else if (updatedRoom.status === 'finished' && current !== 'scoreboard') {
           setScreen('scoreboard');
         }
+      },
+      onShuffleProgress: (payload) => {
+        setShuffleStep(payload.step, payload.autoReshuffle);
+      },
+      onLoungeReaction: (payload) => {
+        triggerLoungeReaction(payload);
       },
       onLatencyUpdate: () => {
         // Latency is automatically synchronized into Zustand store pingMs
@@ -109,7 +119,7 @@ export const App: React.FC<AppRootProps> = () => {
         showToast('⚠️', errorMessage);
       },
     });
-  }, [setScreen, showToast]);
+  }, [setScreen, setShuffleStep, triggerLoungeReaction, showToast]);
 
   // (4) Track ColdStartModal elapsed time and 3s retry interval
   useEffect(() => {
@@ -245,10 +255,10 @@ export const App: React.FC<AppRootProps> = () => {
       wsClient.sendRematch(roomState.id, playerId);
       showToast('🔄', 'Mengajukan Rematch ke server...');
     } else {
-      // Offline mode: trigger instant re-deal with Auto-Reshuffle rule
-      startRematch();
+      // Offline mode: enter ShuffleRitualScreen before dealing the new round
+      triggerRematch();
     }
-  }, [startRematch, showToast]);
+  }, [triggerRematch, showToast]);
 
   const handleReturnToLobby = useCallback(() => {
     const { roomState } = useGameStore.getState();
