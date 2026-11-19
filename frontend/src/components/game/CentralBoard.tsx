@@ -1,6 +1,7 @@
 import React from 'react';
 import clsx from 'clsx';
-import { BoardState, Card, Rank, Suit } from '../../types/game';
+import { AceMode, BoardState, Card, Rank, Suit } from '../../types/game';
+import { useGameStore } from '../../store/useGameStore';
 import { PlayingCard, SuitPlaceholder } from './PlayingCard';
 import {
   RANK_LABELS,
@@ -12,6 +13,7 @@ export interface CentralBoardProps {
   board: BoardState;
   selectedCard: Card | null;
   isMyTurn: boolean;
+  aceMode?: AceMode;
   onPlaySelectedCard?: (card: Card) => void;
   className?: string;
 }
@@ -48,9 +50,12 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
   board,
   selectedCard,
   isMyTurn,
+  aceMode,
   onPlaySelectedCard,
   className,
 }) => {
+  const storeAceMode = useGameStore((s) => s.roomState?.aceMode);
+  const effectiveAceMode: AceMode = aceMode ?? storeAceMode ?? 'LOCKED_NONE';
   const suitsState = board?.suits ?? ({} as Partial<Record<Suit, any>>);
 
   return (
@@ -58,7 +63,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
       role="region"
       aria-label="Papan Meja Permainan"
       className={clsx(
-        'grid grid-cols-4 gap-2 sm:gap-2.5 px-1 items-center w-full max-w-[360px] sm:max-w-md mx-auto my-auto select-none',
+        'grid grid-cols-4 gap-2 sm:gap-2.5 px-1 items-center w-full max-w-[380px] mx-auto my-auto select-none',
         className
       )}
     >
@@ -70,16 +75,23 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
           hasAce: false,
         };
 
-        const { minPlayed, maxPlayed, hasSeven } = suitState;
+        const { minPlayed, maxPlayed, hasSeven, hasAce } = suitState;
 
-        // Validasi apakah kartu yang sedang dipilih pemain cocok disambung ke slot atas (maxPlayed + 1)
+        // Validasi apakah kartu yang sedang dipilih pemain cocok disambung ke slot atas (maxPlayed + 1 atau As Tinggi)
         const canPlayAbove = Boolean(
           isMyTurn &&
             selectedCard &&
             selectedCard.suit === suit &&
             hasSeven &&
-            selectedCard.rank === maxPlayed + 1 &&
-            maxPlayed < 13
+            ((selectedCard.rank >= 8 &&
+              selectedCard.rank <= 13 &&
+              selectedCard.rank === maxPlayed + 1 &&
+              maxPlayed < 13) ||
+              (!hasAce &&
+                selectedCard.rank === 1 &&
+                maxPlayed === 13 &&
+                (effectiveAceMode === 'LOCKED_NONE' ||
+                  effectiveAceMode === 'HIGH')))
         );
 
         // Validasi apakah kartu 7 lambang ini sedang dipilih dan siap diturunkan ke slot tengah
@@ -91,15 +103,25 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
             !hasSeven
         );
 
-        // Validasi apakah kartu yang sedang dipilih pemain cocok disambung ke slot bawah (minPlayed - 1)
+        // Validasi apakah kartu yang sedang dipilih pemain cocok disambung ke slot bawah (minPlayed - 1 atau As Rendah)
         const canPlayBelow = Boolean(
           isMyTurn &&
             selectedCard &&
             selectedCard.suit === suit &&
             hasSeven &&
-            selectedCard.rank === minPlayed - 1 &&
-            minPlayed > 1
+            ((selectedCard.rank >= 2 &&
+              selectedCard.rank <= 6 &&
+              selectedCard.rank === minPlayed - 1 &&
+              minPlayed > 2) ||
+              (!hasAce &&
+                selectedCard.rank === 1 &&
+                minPlayed === 2 &&
+                (effectiveAceMode === 'LOCKED_NONE' ||
+                  effectiveAceMode === 'LOW')))
         );
+
+        // Go engine stores High Ace as maxPlayed = 14; map back to Rank 1 ('A') for rendering
+        const topDisplayRank: Rank = (maxPlayed === 14 ? 1 : maxPlayed) as Rank;
 
         return (
           <div
@@ -125,7 +147,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
                 }
               >
                 <PlayingCard
-                  card={{ suit, rank: maxPlayed as Rank }}
+                  card={{ suit, rank: topDisplayRank }}
                   variant="board"
                   onSelect={
                     canPlayAbove && selectedCard && onPlaySelectedCard
@@ -143,7 +165,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
                 title={`Mainkan ${RANK_LABELS[selectedCard.rank]}${SUIT_SYMBOLS[suit]} ke Meja`}
                 onClick={() => onPlaySelectedCard?.(selectedCard)}
                 className={clsx(
-                  'w-full h-[76px] sm:h-20 relative z-10 rounded-xl border-2 border-dashed border-[#00D084] bg-[#00D084]/20',
+                  'w-full h-[76px] sm:h-20 relative z-10 rounded-xl border-2 border-dashed border-[#00D084] bg-[#00D084]/25',
                   'flex flex-col items-center justify-center gap-0.5 cursor-pointer animate-pulse select-none font-display font-black',
                   'hover:bg-[#00D084]/35 active:scale-95 transition-all text-black shadow-[2px_2px_0px_#000000]'
                 )}
@@ -176,10 +198,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
               <div className="w-full h-[76px] sm:h-20 relative z-20">
                 <SuitPlaceholder
                   suit={suit}
-                  className={clsx(
-                    canPlaySeven &&
-                      'border-2 border-dashed border-[#00D084] bg-[#00D084]/25 ring-2 ring-[#00D084] animate-pulse cursor-pointer hover:bg-[#00D084]/35'
-                  )}
+                  isPlayable={canPlaySeven}
                   onClick={
                     canPlaySeven && selectedCard && onPlaySelectedCard
                       ? () => onPlaySelectedCard(selectedCard)
@@ -229,7 +248,7 @@ export const CentralBoard: React.FC<CentralBoardProps> = ({
                 title={`Mainkan ${RANK_LABELS[selectedCard.rank]}${SUIT_SYMBOLS[suit]} ke Meja`}
                 onClick={() => onPlaySelectedCard?.(selectedCard)}
                 className={clsx(
-                  'w-full h-[76px] sm:h-20 relative z-30 rounded-xl border-2 border-dashed border-[#00D084] bg-[#00D084]/20',
+                  'w-full h-[76px] sm:h-20 relative z-30 rounded-xl border-2 border-dashed border-[#00D084] bg-[#00D084]/25',
                   'flex flex-col items-center justify-center gap-0.5 cursor-pointer animate-pulse select-none font-display font-black',
                   'hover:bg-[#00D084]/35 active:scale-95 transition-all text-black shadow-[2px_2px_0px_#000000]'
                 )}
