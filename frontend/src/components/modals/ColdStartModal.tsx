@@ -61,7 +61,7 @@ export const ColdStartModal: React.FC<ColdStartModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="cold-start-modal-title"
-      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-[2px] animate-in fade-in duration-150"
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={onClose}
     >
       {/* Modal Dialog Container */}
@@ -77,7 +77,7 @@ export const ColdStartModal: React.FC<ColdStartModalProps> = ({
           type="button"
           onClick={onClose}
           aria-label="Tutup pemberitahuan"
-          className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white hover:bg-[#FF4343] hover:text-white border-2 border-black flex items-center justify-center font-display font-black text-sm shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all select-none"
+          className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white hover:bg-[#FF4343] hover:text-white border-2 border-black flex items-center justify-center font-display font-black text-sm shadow-[2px_2px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] transition-all select-none cursor-pointer"
         >
           ✕
         </button>
@@ -179,7 +179,7 @@ export const ColdStartModal: React.FC<ColdStartModalProps> = ({
           <button
             type="button"
             onClick={onCancelAndPlayOffline}
-            className="w-full py-3 px-4 rounded-xl bg-[#FFE600] hover:bg-[#ebd300] border-[2.5px] border-black font-display font-black text-sm text-black uppercase tracking-wider shadow-[3.5px_3.5px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-2 select-none"
+            className="w-full py-3 px-4 rounded-xl bg-[#FFE600] hover:bg-[#ebd300] border-[2.5px] border-black font-display font-black text-sm text-black uppercase tracking-wider shadow-[3.5px_3.5px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] transition-all flex items-center justify-center gap-2 select-none cursor-pointer"
           >
             <span className="text-base">🎮</span>
             <span>Batal / Main Offline Saja</span>
