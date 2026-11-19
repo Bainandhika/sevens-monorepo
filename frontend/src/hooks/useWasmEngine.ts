@@ -4,13 +4,17 @@ import {
   BoardState,
   BotDifficulty,
   Card,
+  CommunityStatus,
   Player,
+  PlayerScoreDetail,
 } from '../types/game';
 import {
   canPlayCard,
   getValidMovesForHand,
   useGameStore,
 } from '../store/useGameStore';
+import { calculateCardPenalty, isKeyCard } from '../constants/designTokens';
+import { evaluateRTRWAfterRound } from '../services/mockDataService';
 
 /**
  * Natural thinking delay for AI bot turns in milliseconds (PRD & Spec SSOT: 700ms)
@@ -21,10 +25,26 @@ export const BOT_TURN_NATURAL_DELAY_MS = 700;
  * Interface representing the exposed TinyGo WebAssembly Sevens Engine API
  */
 export interface SevensWasmAPI {
-  validateMove: (boardJson: string, cardJson: string) => boolean;
-  getValidMoves: (handJson: string, boardJson: string) => string;
-  getBotMove: (handJson: string, boardJson: string, difficulty: string) => string;
-  calculateScore: (playerId: string, handJson: string, extraPenalties: number) => string;
+  validateMove: (boardJson: string, cardJson: string, aceMode?: string) => boolean;
+  getValidMoves: (handJson: string, boardJson: string, aceMode?: string) => string;
+  getBotMove: (
+    handJson: string,
+    boardJson: string,
+    difficulty: string,
+    aceMode?: string
+  ) => string;
+  calculateScore: (
+    playerId: string,
+    handJson: string,
+    extraPenalties: number,
+    aceMode?: string
+  ) => string;
+  selectFoldCard: (
+    handJson: string,
+    difficulty?: string,
+    aceMode?: string
+  ) => string;
+  calculateLeaderboard: (inputsJson: string, aceMode?: string) => string;
 }
 
 /**
@@ -200,80 +220,149 @@ export function getValidMovesFallback(
 }
 
 /**
- * Pure TypeScript SSOT Fallback for computing score penalties
- * Identical formula to Go engine: CalculateHandScore (Ace=30, 7=30, >10=10, else rank)
+ * Pure TypeScript SSOT Fallback for computing tactical score penalties:
+ * - Key cards 6 & 8: flat 30 points
+ * - Ace (1): 0 (LOCKED_NONE), 1 (LOW), 15 (HIGH)
+ * - 2-5, 7, 9-10, J(11), Q(12), K(13): nominal rank value
  */
 export function calculateScoreFallback(
   playerId: string,
   hand: Card[],
-  extraPenalties = 0
+  extraPenalties = 0,
+  aceMode: AceMode = 'LOCKED_NONE'
 ): string {
-  let cardPoints = 0;
-  let acePenalties = 0;
-  let sevenPenalties = 0;
-
-  for (const card of hand) {
-    if (card.rank === 1) {
-      acePenalties += 30;
-    } else if (card.rank === 7) {
-      sevenPenalties += 30;
-    } else if (card.rank > 10) {
-      cardPoints += 10;
-    } else {
-      cardPoints += card.rank;
-    }
-  }
+  const foldedCards = hand.map((card) => ({
+    card,
+    ...calculateCardPenalty(card, aceMode),
+  }));
+  const cardPenaltyTotal = foldedCards.reduce((sum, item) => sum + item.points, 0);
+  const totalPenalty = cardPenaltyTotal + extraPenalties;
 
   const detail = {
     playerId,
-    remainingCards: hand.length,
-    cardPoints,
-    acePenalties,
-    sevenPenalties,
+    playerName: playerId,
+    foldedCards,
+    totalPenalty,
     otherPenalties: extraPenalties,
-    totalMinus: cardPoints + acePenalties + sevenPenalties + extraPenalties,
   };
 
   return JSON.stringify(detail);
 }
 
 /**
- * Pure TypeScript SSOT Fallback for selecting the safest card to fold:
- * Rules:
- * 1. Kartu 7 haram ditutup dalam kondisi apa pun (rank !== 7)
- * 2. Hindari menutup kartu kunci (6 dan 8) karena terkena denda flat +30 poin
- * 3. Pilih kartu nominal terkecil untuk meminimalkan denda
+ * Counts how many same-suit continuation cards in hand become blocked if `card` is folded.
+ * Matches Go pkg/engine/bot.go continuationLoss.
  */
-export function selectSafestFoldCard(hand: Card[]): Card {
+function continuationLoss(card: Card, hand: Card[]): number {
+  let loss = 0;
+  for (const c of hand) {
+    if (c.suit === card.suit) {
+      if (card.rank < 7 && c.rank < card.rank) {
+        loss++;
+      } else if (
+        card.rank > 7 &&
+        (c.rank > card.rank || (card.rank === 13 && c.rank === 1))
+      ) {
+        loss++;
+      }
+    }
+  }
+  return loss;
+}
+
+/**
+ * Pure TypeScript SSOT Fallback for selecting the safest card to fold.
+ * Matches Go pkg/engine/bot.go SelectFoldCard.
+ */
+export function selectSafestFoldCardFallback(
+  hand: Card[],
+  difficulty: BotDifficulty = 'hard',
+  aceMode: AceMode = 'LOCKED_NONE'
+): Card {
   const foldCandidates = hand.filter((c) => c.rank !== 7);
-  const nonKeyCandidates = foldCandidates.filter((c) => c.rank !== 6 && c.rank !== 8);
+  if (foldCandidates.length === 0) {
+    return hand[0];
+  }
 
-  if (nonKeyCandidates.length > 0) {
-    // Sort ascending by rank to minimize penalty points
-    const sorted = [...nonKeyCandidates].sort((a, b) => a.rank - b.rank);
+  if (difficulty === 'easy') {
+    return foldCandidates[Math.floor(Math.random() * foldCandidates.length)];
+  }
+
+  const nonKeyCandidates = foldCandidates.filter((c) => !isKeyCard(c));
+  const pool = nonKeyCandidates.length > 0 ? nonKeyCandidates : foldCandidates;
+
+  if (difficulty === 'medium') {
+    const sorted = [...pool].sort((a, b) => a.rank - b.rank);
     return sorted[0];
   }
 
-  if (foldCandidates.length > 0) {
-    const sorted = [...foldCandidates].sort((a, b) => a.rank - b.rank);
-    return sorted[0];
+  // Hard difficulty: evaluate actual penalty cost via calculateCardPenalty(c, aceMode),
+  // break ties by continuationLoss, then rank, then suit.
+  const sorted = [...pool].sort((a, b) => {
+    const penA = calculateCardPenalty(a, aceMode).points;
+    const penB = calculateCardPenalty(b, aceMode).points;
+    if (penA !== penB) {
+      return penA - penB;
+    }
+    const lossA = continuationLoss(a, hand);
+    const lossB = continuationLoss(b, hand);
+    if (lossA !== lossB) {
+      return lossA - lossB;
+    }
+    if (a.rank !== b.rank) {
+      return a.rank - b.rank;
+    }
+    return a.suit < b.suit ? -1 : a.suit > b.suit ? 1 : 0;
+  });
+
+  return sorted[0];
+}
+
+/**
+ * Selects the safest card to fold, delegating to window.SevensWasm.selectFoldCard when ready.
+ */
+export function selectSafestFoldCard(
+  hand: Card[],
+  difficulty: BotDifficulty = 'hard',
+  aceMode: AceMode = 'LOCKED_NONE'
+): Card {
+  if (
+    typeof window !== 'undefined' &&
+    window.SevensWasm &&
+    typeof window.SevensWasm.selectFoldCard === 'function'
+  ) {
+    try {
+      const raw = window.SevensWasm.selectFoldCard(
+        JSON.stringify(hand),
+        difficulty,
+        aceMode
+      );
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.suit && parsed.rank && parsed.rank !== 7) {
+        return parsed as Card;
+      }
+    } catch (err) {
+      console.warn('[WASM] selectFoldCard failed, using fallback:', err);
+    }
   }
 
-  // Extreme fallback (should not occur with auto-reshuffle deal rules)
-  return hand[0];
+  return selectSafestFoldCardFallback(hand, difficulty, aceMode);
 }
 
 /**
  * Pure TypeScript SSOT Fallback for Bot Decision:
- * Replicates Go pkg/engine/bot.go logic:
+ * Strictly mirrors Go pkg/engine/bot.go logic:
  * - Easy: random valid move
- * - Medium: prefers move where bot holds adjacent continuation cards (+2 score)
- * - Hard: strategic scoring (holds 7 if no 6/8 follow-up, awards continuity, targets 1/13)
+ * - Medium: adjacent continuation (+3), Rank >= 10 (+2), key cards 6/8 (+2)
+ * - Hard: withholds 7 (-10) if lacking 6/8, withholds 6/8 (-4) if lacking lane follow-up,
+ *         steers AceMode LOW/HIGH (+12) based on lowCount (2..5) vs highCount (10..13),
+ *         awards +5 per unlocked continuation card.
  */
 export function computeBotPlayMoveFallback(
   validMoves: Card[],
   hand: Card[],
-  difficulty: BotDifficulty
+  difficulty: BotDifficulty,
+  board?: BoardState
 ): { action: 'play'; card: Card } {
   if (difficulty === 'easy' || validMoves.length === 1) {
     const chosen = validMoves[Math.floor(Math.random() * validMoves.length)];
@@ -282,15 +371,27 @@ export function computeBotPlayMoveFallback(
 
   if (difficulty === 'medium') {
     const handMap = new Set(hand.map((c) => `${c.suit}-${c.rank}`));
-    let bestScore = -100;
+    let bestScore = -9999;
     let bestCard = validMoves[0];
 
     for (const move of validMoves) {
       let score = 0;
+
       if (move.rank < 7) {
-        if (handMap.has(`${move.suit}-${move.rank - 1}`)) score += 2;
+        if (handMap.has(`${move.suit}-${move.rank - 1}`)) score += 3;
       } else if (move.rank > 7) {
-        if (handMap.has(`${move.suit}-${move.rank + 1}`)) score += 2;
+        if (handMap.has(`${move.suit}-${move.rank + 1}`)) score += 3;
+      } else {
+        if (handMap.has(`${move.suit}-6`)) score += 3;
+        if (handMap.has(`${move.suit}-8`)) score += 3;
+      }
+
+      if (move.rank >= 10) {
+        score += 2;
+      }
+
+      if (isKeyCard(move)) {
+        score += 2;
       }
 
       if (score > bestScore) {
@@ -303,13 +404,23 @@ export function computeBotPlayMoveFallback(
   }
 
   // Hard difficulty
-  let bestScore = -9999;
+  let bestScore = -99999;
   let bestCard = validMoves[0];
+
+  let lowCount = 0;
+  let highCount = 0;
+  for (const c of hand) {
+    if (c.rank >= 2 && c.rank <= 5) {
+      lowCount++;
+    } else if (c.rank >= 10 && c.rank <= 13) {
+      highCount++;
+    }
+  }
 
   for (const move of validMoves) {
     let score = 0;
 
-    // Avoid starting a new suit (playing 7) if bot holds no 6 or 8 follow-up
+    // 1. Withholds opening a new 7 (-10) if holding neither 6 nor 8 of that suit
     if (move.rank === 7) {
       const hasFollowUp = hand.some(
         (c) => c.suit === move.suit && (c.rank === 6 || c.rank === 8)
@@ -319,21 +430,45 @@ export function computeBotPlayMoveFallback(
       }
     }
 
-    // Check self-continuity across hand
-    for (const c of hand) {
-      if (c.suit === move.suit) {
-        if (
-          (move.rank < 7 && c.rank < move.rank) ||
-          (move.rank > 7 && c.rank > move.rank)
-        ) {
-          score += 5;
-        }
+    // 2. Withholds playing 6 or 8 (-4) if alternatives exist and lacking lane follow-up
+    if (isKeyCard(move) && validMoves.length > 1) {
+      let hasLaneFollowUp = false;
+      if (move.rank === 6) {
+        hasLaneFollowUp = hand.some((c) => c.suit === move.suit && c.rank < 6);
+      } else if (move.rank === 8) {
+        hasLaneFollowUp = hand.some(
+          (c) => c.suit === move.suit && (c.rank > 8 || c.rank === 1)
+        );
+      }
+      if (!hasLaneFollowUp) {
+        score -= 4;
       }
     }
 
-    // Prefer playing towards Ace or King to finalize the suit lane
-    if (move.rank === 1 || move.rank === 13) {
-      score += 8;
+    // 3. Evaluates low-card (2..5) vs high-card (10..13) composition to steer AceMode (+12)
+    if (move.rank === 1 && board?.suits?.[move.suit]) {
+      const suitState = board.suits[move.suit];
+      if (suitState.minPlayed === 2 && lowCount >= highCount) {
+        score += 12;
+      }
+      if (suitState.maxPlayed === 13 && highCount >= lowCount) {
+        score += 12;
+      }
+    }
+
+    // 4. Awards +5 for each self-continuation card unlocked in hand
+    for (const c of hand) {
+      if (c.suit === move.suit) {
+        if (move.rank === 7) {
+          if (c.rank !== 7) score += 5;
+        } else if (move.rank < 7) {
+          if (c.rank < move.rank) score += 5;
+        } else {
+          if (c.rank > move.rank || (c.rank === 1 && move.rank === 13)) {
+            score += 5;
+          }
+        }
+      }
     }
 
     if (score > bestScore) {
@@ -361,13 +496,98 @@ export function getBotMoveFallback(
     const validMoves = getValidMovesForHand(hand, board, aceMode);
 
     if (validMoves.length > 0) {
-      const decision = computeBotPlayMoveFallback(validMoves, hand, diff);
-      return JSON.stringify({ card: decision.card, isPass: false });
+      const decision = computeBotPlayMoveFallback(validMoves, hand, diff, board);
+      return JSON.stringify({ card: decision.card, isPass: false, action: 'play' });
     }
 
-    return JSON.stringify({ card: null, isPass: true });
+    const foldCard = selectSafestFoldCardFallback(hand, diff, aceMode);
+    return JSON.stringify({
+      card: null,
+      isPass: true,
+      action: 'fold',
+      foldCard,
+    });
   } catch (err) {
     return JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+}
+
+/**
+ * Pure TypeScript SSOT Fallback for calculateLeaderboard JSON string.
+ * Mirrors Go pkg/engine/score.go CalculateFinalLeaderboard.
+ */
+export function calculateLeaderboardFallback(
+  inputsJson: string,
+  aceMode: AceMode = 'LOCKED_NONE'
+): string {
+  try {
+    const inputs: Array<{
+      playerId: string;
+      playerName: string;
+      seatIndex: number;
+      foldedCards: Card[];
+      lossesCount?: number;
+      consecutiveLosses?: number;
+      statusRtRw?: CommunityStatus;
+    }> = JSON.parse(inputsJson);
+
+    const ranked = inputs.map((input) => {
+      const foldedCards = (input.foldedCards || []).map((card) => ({
+        card,
+        ...calculateCardPenalty(card, aceMode),
+      }));
+      const totalPenalty = foldedCards.reduce((sum, item) => sum + item.points, 0);
+      return {
+        input,
+        foldedCards,
+        totalPenalty,
+      };
+    });
+
+    ranked.sort((a, b) => {
+      if (a.totalPenalty !== b.totalPenalty) {
+        return a.totalPenalty - b.totalPenalty;
+      }
+      return (a.input.seatIndex ?? 0) - (b.input.seatIndex ?? 0);
+    });
+
+    const players: Player[] = inputs.map((input) => ({
+      id: input.playerId,
+      name: input.playerName,
+      initials: input.playerName.slice(0, 2).toUpperCase(),
+      avatarColor: '#4F46E5',
+      isBot: false,
+      isReady: true,
+      hand: [],
+      foldedCards: input.foldedCards || [],
+      penaltyPoints: 0,
+      lossesCount: input.lossesCount ?? 0,
+      consecutiveLosses: input.consecutiveLosses ?? 0,
+      statusRtRw: input.statusRtRw ?? 'NONE',
+      isConnected: true,
+    }));
+
+    const scoreboard: Record<string, PlayerScoreDetail> = {};
+    ranked.forEach((entry, idx) => {
+      const rankPosition = (idx + 1) as 1 | 2 | 3 | 4;
+      scoreboard[entry.input.playerId] = {
+        playerId: entry.input.playerId,
+        playerName: entry.input.playerName,
+        rankPosition,
+        foldedCards: entry.foldedCards,
+        totalPenalty: entry.totalPenalty,
+        lossesCount: entry.input.lossesCount ?? 0,
+        consecutiveLosses: entry.input.consecutiveLosses ?? 0,
+        statusRtRw: entry.input.statusRtRw ?? 'NONE',
+        isWinner: idx === 0,
+        isJuruKunci: idx === ranked.length - 1 && ranked.length > 1,
+      };
+    });
+
+    const evaluated = evaluateRTRWAfterRound(players, scoreboard);
+    return JSON.stringify(evaluated.scoreboard);
+  } catch {
+    return '{}';
   }
 }
 
@@ -375,53 +595,128 @@ export function getBotMoveFallback(
  * Sevens WebAssembly Bridge object wrapping window.SevensWasm with TS fallbacks
  */
 export const sevensWasmBridge: SevensWasmAPI = {
-  validateMove: (boardJson: string, cardJson: string): boolean => {
-    if (typeof window !== 'undefined' && window.SevensWasm && typeof window.SevensWasm.validateMove === 'function') {
+  validateMove: (boardJson: string, cardJson: string, aceMode = 'LOCKED_NONE'): boolean => {
+    if (
+      typeof window !== 'undefined' &&
+      window.SevensWasm &&
+      typeof window.SevensWasm.validateMove === 'function'
+    ) {
       try {
-        return window.SevensWasm.validateMove(boardJson, cardJson);
+        return window.SevensWasm.validateMove(boardJson, cardJson, aceMode);
       } catch (err) {
         console.warn('[WASM] validateMove failed, using fallback:', err);
       }
     }
-    return validateMoveFallback(boardJson, cardJson);
+    return validateMoveFallback(boardJson, cardJson, aceMode as AceMode);
   },
 
-  getValidMoves: (handJson: string, boardJson: string): string => {
-    if (typeof window !== 'undefined' && window.SevensWasm && typeof window.SevensWasm.getValidMoves === 'function') {
+  getValidMoves: (handJson: string, boardJson: string, aceMode = 'LOCKED_NONE'): string => {
+    if (
+      typeof window !== 'undefined' &&
+      window.SevensWasm &&
+      typeof window.SevensWasm.getValidMoves === 'function'
+    ) {
       try {
-        return window.SevensWasm.getValidMoves(handJson, boardJson);
+        return window.SevensWasm.getValidMoves(handJson, boardJson, aceMode);
       } catch (err) {
         console.warn('[WASM] getValidMoves failed, using fallback:', err);
       }
     }
-    return getValidMovesFallback(handJson, boardJson);
+    return getValidMovesFallback(handJson, boardJson, aceMode as AceMode);
   },
 
-  getBotMove: (handJson: string, boardJson: string, difficulty: string): string => {
-    if (typeof window !== 'undefined' && window.SevensWasm && typeof window.SevensWasm.getBotMove === 'function') {
+  getBotMove: (
+    handJson: string,
+    boardJson: string,
+    difficulty: string,
+    aceMode = 'LOCKED_NONE'
+  ): string => {
+    if (
+      typeof window !== 'undefined' &&
+      window.SevensWasm &&
+      typeof window.SevensWasm.getBotMove === 'function'
+    ) {
       try {
-        return window.SevensWasm.getBotMove(handJson, boardJson, difficulty);
+        return window.SevensWasm.getBotMove(handJson, boardJson, difficulty, aceMode);
       } catch (err) {
         console.warn('[WASM] getBotMove failed, using fallback:', err);
       }
     }
-    return getBotMoveFallback(handJson, boardJson, difficulty);
+    return getBotMoveFallback(handJson, boardJson, difficulty, aceMode as AceMode);
   },
 
-  calculateScore: (playerId: string, handJson: string, extraPenalties: number): string => {
-    if (typeof window !== 'undefined' && window.SevensWasm && typeof window.SevensWasm.calculateScore === 'function') {
+  calculateScore: (
+    playerId: string,
+    handJson: string,
+    extraPenalties = 0,
+    aceMode = 'LOCKED_NONE'
+  ): string => {
+    if (
+      typeof window !== 'undefined' &&
+      window.SevensWasm &&
+      typeof window.SevensWasm.calculateScore === 'function'
+    ) {
       try {
-        return window.SevensWasm.calculateScore(playerId, handJson, extraPenalties);
+        return window.SevensWasm.calculateScore(
+          playerId,
+          handJson,
+          extraPenalties,
+          aceMode
+        );
       } catch (err) {
         console.warn('[WASM] calculateScore failed, using fallback:', err);
       }
     }
     try {
       const hand: Card[] = JSON.parse(handJson);
-      return calculateScoreFallback(playerId, hand, extraPenalties);
+      return calculateScoreFallback(playerId, hand, extraPenalties, aceMode as AceMode);
     } catch {
       return '{}';
     }
+  },
+
+  selectFoldCard: (
+    handJson: string,
+    difficulty = 'hard',
+    aceMode = 'LOCKED_NONE'
+  ): string => {
+    if (
+      typeof window !== 'undefined' &&
+      window.SevensWasm &&
+      typeof window.SevensWasm.selectFoldCard === 'function'
+    ) {
+      try {
+        return window.SevensWasm.selectFoldCard(handJson, difficulty, aceMode);
+      } catch (err) {
+        console.warn('[WASM] selectFoldCard failed, using fallback:', err);
+      }
+    }
+    try {
+      const hand: Card[] = JSON.parse(handJson);
+      const card = selectSafestFoldCardFallback(
+        hand,
+        difficulty as BotDifficulty,
+        aceMode as AceMode
+      );
+      return JSON.stringify(card ?? {});
+    } catch {
+      return '{}';
+    }
+  },
+
+  calculateLeaderboard: (inputsJson: string, aceMode = 'LOCKED_NONE'): string => {
+    if (
+      typeof window !== 'undefined' &&
+      window.SevensWasm &&
+      typeof window.SevensWasm.calculateLeaderboard === 'function'
+    ) {
+      try {
+        return window.SevensWasm.calculateLeaderboard(inputsJson, aceMode);
+      } catch (err) {
+        console.warn('[WASM] calculateLeaderboard failed, using fallback:', err);
+      }
+    }
+    return calculateLeaderboardFallback(inputsJson, aceMode as AceMode);
   },
 };
 
@@ -438,20 +733,20 @@ export function evaluateValidMoves(
     return [];
   }
 
-  if (typeof window !== 'undefined' && window.SevensWasm && typeof window.SevensWasm.getValidMoves === 'function') {
+  if (
+    typeof window !== 'undefined' &&
+    window.SevensWasm &&
+    typeof window.SevensWasm.getValidMoves === 'function'
+  ) {
     try {
       const raw = window.SevensWasm.getValidMoves(
         JSON.stringify(hand),
-        JSON.stringify(board)
+        JSON.stringify(board),
+        aceMode
       );
       const wasmMoves: Card[] = JSON.parse(raw);
 
-      // Include potential Ace plays allowed under AceMode
-      const aceMoves = hand.filter(
-        (c) => c.rank === 1 && canPlayCard(board, c, aceMode)
-      );
-
-      const candidateCards = [...wasmMoves, ...aceMoves];
+      const candidateCards = Array.isArray(wasmMoves) ? wasmMoves : [];
       const verifiedMap = new Map<string, Card>();
 
       for (const card of candidateCards) {
@@ -482,12 +777,17 @@ export function computeBotAction(
   const validMoves = evaluateValidMoves(hand, board, aceMode);
 
   if (validMoves.length > 0) {
-    if (typeof window !== 'undefined' && window.SevensWasm && typeof window.SevensWasm.getBotMove === 'function') {
+    if (
+      typeof window !== 'undefined' &&
+      window.SevensWasm &&
+      typeof window.SevensWasm.getBotMove === 'function'
+    ) {
       try {
         const raw = window.SevensWasm.getBotMove(
           JSON.stringify(hand),
           JSON.stringify(board),
-          difficulty
+          difficulty,
+          aceMode
         );
         const decision = JSON.parse(raw);
 
@@ -506,11 +806,11 @@ export function computeBotAction(
     }
 
     // Pure TypeScript selection fallback
-    return computeBotPlayMoveFallback(validMoves, hand, difficulty);
+    return computeBotPlayMoveFallback(validMoves, hand, difficulty, board);
   }
 
   // No valid playable moves available: bot must fold safest candidate
-  const foldCard = selectSafestFoldCard(hand);
+  const foldCard = selectSafestFoldCard(hand, difficulty, aceMode);
   return { action: 'fold', card: foldCard };
 }
 
